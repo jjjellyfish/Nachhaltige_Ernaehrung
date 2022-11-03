@@ -45,9 +45,11 @@ sust <- dat %>% select(lfdn, any_of(items_auswahl$item_nr))
 Punkte für die jeweiligen Antworten vergeben --> Sortierung nach Bereichen (ersteinmal so wie sie in der Auswahl vom 28.10. festegelgt wurden)
 
 
-# Kodierung einzelner Bereiche
+# 1. Score bilden
 
-## Einstellung / Bedeutung
+## 1.1 Kodierung einzelner Bereiche
+
+### 1.1.1 Einstellung / Bedeutung
 
 ```{r kodierung_einstellung}
 # Diagnostik von haven_labelled-Objekten
@@ -91,8 +93,7 @@ sust$v_365[sust$v_365 == 0] <- NA
 table(sust$v_365, useNA = 'always')
 ```
 
-
-## Wissen /Fertigkeiten
+### 1.1.2 Wissen /Fertigkeiten
 ```{r kodierung_wissen}
 ### Frage 7.1_3: Ernährung hat Einfluss auf Umwelt
 sust$v_321[sust$v_321 == 0] <- NA
@@ -138,7 +139,7 @@ table(sust$v_360, useNA = 'always')
 
 
 
-## Verhalten
+### 1.1.3 Verhalten
 ```{r kodierung_verhalten}
 ### Frage 7.3_3: achten auf klimafreundliche Ernährung
 sust$v_329[sust$v_329 == 0] <- NA
@@ -212,3 +213,18 @@ sust$v_366[sust$v_366 == 0] <- NA
 table(sust$v_366, useNA = 'always')
 ```
 
+
+## 1.2 Transformation & Invertierung
+```{r transformation}
+table(sust$v_325, useNA = 'always')
+
+tmp <- sust
+
+#X = (x - 1) / (b - a)
+tmp$v_325_tr <- (tmp$v_325 - 1) / (5 - 1)
+table(tmp$v_325_tr, useNA = 'always')
+mean(tmp$v_325_tr, na.rm=TRUE)
+
+tmp$v_325_tr <- (tmp$v_325 - min(tmp$v_325, na.rm=TRUE)) / (5 - min(tmp$v_325, na.rm=TRUE))
+
+```

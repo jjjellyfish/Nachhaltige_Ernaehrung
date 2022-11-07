@@ -55,7 +55,6 @@ Punkte für die jeweiligen Antworten vergeben --> Sortierung nach Bereichen (ers
 # Diagnostik von haven_labelled-Objekten
 # check <- labelled::look_for(tmp)
 
-
 ### Frage 7.2: Welche Aspekte sind Ihnen am Essen am wichtigsten?
 tmp <- sust %>% select(v_322:v_326) %>% 
   mutate_all(as.factor) %>% 
@@ -216,15 +215,16 @@ table(sust$v_366, useNA = 'always')
 
 ## 1.2 Transformation & Invertierung
 ```{r transformation}
-table(sust$v_325, useNA = 'always')
-
 tmp <- sust
 
-#X = (x - 1) / (b - a)
-tmp$v_325_tr <- (tmp$v_325 - 1) / (5 - 1)
-table(tmp$v_325_tr, useNA = 'always')
-mean(tmp$v_325_tr, na.rm=TRUE)
+transform_scale <- function(x) {
+  (x - min(x, na.rm = TRUE)) /  (max(x, na.rm=TRUE) - min(x, na.rm = TRUE))
+}
 
-tmp$v_325_tr <- (tmp$v_325 - min(tmp$v_325, na.rm=TRUE)) / (5 - min(tmp$v_325, na.rm=TRUE))
+tmp <- tmp %>% 
+  mutate_all(as.numeric) %>% 
+  mutate(across(v_321:ern_kid, transform_scale))
 
+check <- dlookr::diagnose(tmp)
+check <- dlookr::diagnose_numeric(tmp)
 ```

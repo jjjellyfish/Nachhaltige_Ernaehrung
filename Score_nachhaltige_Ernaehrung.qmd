@@ -177,3 +177,26 @@ sust <- sust %>%
   mutate(across(any_of(ids), ~ 1-.))
 ```
 
+
+# 2. Psychometrics
+```{r pca}
+tmp <- sust %>% na.omit()
+
+pca <- prcomp(tmp[,c(2:length(tmp))], center = TRUE,scale. = TRUE)
+summary(pca)
+
+# library(devtools)
+# #install_github("vqv/ggbiplot")
+# 
+# library(ggbiplot)
+# ggbiplot(pca)
+```
+
+```{r efa}
+library(corrplot)
+
+datamatrix <- cor(tmp[,c(-1)])
+corrplot(datamatrix, method="number")
+```
+
+

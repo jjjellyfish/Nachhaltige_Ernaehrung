@@ -3,6 +3,7 @@ title: "Score Nachhaltige Ernährung"
 author: "IGES Institut"
 format: html
 editor: visual
+toc: true
 ---
 
 ```{r setup}
@@ -66,6 +67,7 @@ Punkte für die jeweiligen Antworten vergeben --> Sortierung nach Bereichen (ers
 sust$v_325[sust$v_325 == 6] <- NA
 sust <- sust %>% select(-v_322, -v_323, -v_324, -v_326)
 
+table(sust$v_325)
 
 ### Frage 7.9: Welche Hindernisse für klimafreundliche Ernährung? (invertiert)
 sust <- sust %>% 
@@ -143,7 +145,8 @@ sust <- sust %>%
 
 **Item-Datensatz vervollstäbdigen**
 ```{r}
-names(items)
+#| label: add_item_descriptions
+#names(items)
 items <- items %>% 
   add_row(item_nr='v_352_357', item='Wie viele Hindernisse für eine klima-/umweltfreundliche Ernährung werden genannt?', bereich='Hindernisse', bereich_neu='Einstellung / Bedeutung') %>% 
   add_row(item_nr='ern_erw', item='Wie ernähren Sie sich?', bereich='Verhalten', bereich_neu='Verhalten') %>%
@@ -177,11 +180,15 @@ check <- dlookr::diagnose(sust)
 check <- dlookr::diagnose_numeric(sust)
 ```
 
+
 **Invertierung** <br>
 Die Items sollen so kodiert sein, dass ein hoher numerischer Wert (Max 1) mit maximal nachhaltiger Ernährung einhergeht. Ein niedriger Wert (Min 0) bedeutet umgekehrt eine wenig nachhaltige Ernährung. 
+
+Alle Items, die in die umgekehrte Richtung kodiert sind, werden umgedreht.
 ```{r}
 #| label: invert
-ids <- c('v_359', 'v_352_357', 'v_360')
+ids <- c('v_321', 'v_325', 'v_352_357', 'v_364', 'v_365', 'v_327', 'v_330', 'v_331', 'v_332',
+         'v_329', 'v_334', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_366')
 
 sust <- sust %>%
   mutate(across(any_of(ids), ~ 1-.))
@@ -189,23 +196,18 @@ sust <- sust %>%
 
 
 # 2. Psychometrics
-```{r pca}
+```{r}
+#| label: na.omit
 tmp <- sust %>% na.omit()
-
-pca <- prcomp(tmp[,c(2:length(tmp))], center = TRUE,scale. = TRUE)
-summary(pca)
-
-# library(devtools)
-# #install_github("vqv/ggbiplot")
-# 
-# library(ggbiplot)
-# ggbiplot(pca)
 ```
 
-```{r efa}
+
+## 2.1 EFA
+```{r}
 datamatrix <- cor(tmp[,c(-1)])
-corrplot::corrplot(datamatrix, method="number")
+corrplot::corrplot(datamatrix, method="number", order='hclust')
 ```
+
 Faktorisierbarkeit der Daten prüfen:
 ```{r}
 # KMO sollte > .60 sein, damit eine Faktorenanalyse Sinn ergibt 
@@ -218,7 +220,6 @@ psych::cortest.bartlett(tmp[,c(-1)])
 det(cor(tmp[,c(-1)]))
 ```
 
-**EFA:**
 Interpretation: https://m-clark.github.io/posts/2020-04-10-psych-explained/
 
 ```{r}
@@ -227,8 +228,14 @@ efa1 <- psych::fa(r=tmp[,c(-1)],
  max.iter=100, 
  rotate='promax')
 
-efa1_df <- bind_cols(efa1$loadings, efa1$communality, efa1$uniquenesses)
-names(efa1_df)[4:5] <- c('h2', 'u2')
+efa1_df <- bind_cols(rownames(efa1$loadings), efa1$loadings, efa1$communality, efa1$uniquenesses)
+names(efa1_df)[1] <- c('item')
+names(efa1_df)[(length(efa1_df)-1):length(efa1_df)] <- c('h2', 'u2')
+
+##### to do: ####
+# alle Items einem Faktor zuordnen
+#efa1_df2 <- efa1_df %>% 
+  
 ```
 
 ```{r}
@@ -236,10 +243,12 @@ print(efa1)
 ```
 
 
-**CFA**
+## 2.2 CFA
 = Testen der Hypothese von den drei Bereichen Einstellung, Wissen & Verhalten
 ```{r}
 #| label: cfa
+tmp <- tmp %>% select(-lfdn)
+
 ### Messmodell aufsetzen
 model <- '
   f1_einstellung =~ v_325 + v_352_357 + v_359 + v_364 + v_365
@@ -251,26 +260,23 @@ model <- '
 fit <- lavaan::cfa(model=model, data=tmp, std.lv=TRUE, fixed.x=FALSE)
 #summary(fit)
 
-tmp <- as.data.frame(fitMeasures(fit, c("rmsea", "cfi", "srmr")))
+tmp2 <- as.data.frame(fitMeasures(fit, c("rmsea", "cfi", "srmr")))
 
-tmp %>%  
+tmp2 %>%  
   tibble::rownames_to_column(., 'Index') %>%
   kbl(booktabs = T,  digits = 4, centering=F, row.names=FALSE, 
-      col.names=c('Index', 'Wert'), 
-      caption = 'Fitindizes der angenommenen dreifaktoriellen Struktur des FLQ')
+      col.names=c('Index', 'Wert'))
 ```
 --> Modell passt noch nicht auf die Daten
 
 
 ```{r}
+#| label: faktorladungen
 # Datensatz mit Ladungsparametern erstellen:
 est <- parameterEstimates(fit, standardized=TRUE) %>% 
   filter(op == "=~") %>% 
   select(Factor=lhs, op, Item=rhs, Standardized=est, ci.lower, ci.upper, SE=se, 'p-value'=pvalue)
-```
 
-```{r}
-#| label: faktorladungen
 load <- left_join(est, items[c('item_nr', 'bereich_neu', 'item')], by=c('Item'='item_nr')) %>% 
   select(bereich_neu, Item, item, Standardized, ci.lower, ci.upper)
 
@@ -282,3 +288,117 @@ load %>%
   column_spec(c(2,3), border_left = F, border_right = T) %>% 
   row_spec(c(0,5,13), extra_css = "border-bottom: 1px solid", hline_after=TRUE) 
 ```
+
+```{r}
+#| label: trennsch & schwierigkeit
+#| warning: false
+#| message: false
+
+## Itemschwierigkeiten
+diffic <- psych::alpha(tmp)[["item.stats"]][["mean"]]/1*100
+diffic <- data.frame(diffic)
+rownames(diffic) <- colnames(tmp)
+diffic <-round(diffic, digits=3)
+
+## Itemtrennschärfen
+differ <- psych::alpha(tmp)[["item.stats"]][["r.drop"]]
+differ <- data.frame(differ)
+rownames(differ) <- (tmp)
+differ <- round(differ, digits=3)
+
+tmp2 <- bind_cols(diffic, differ)
+tmp2 <- tmp2 %>% tibble::rownames_to_column('item_nr')
+tmp2 <- left_join(tmp2, items[c('item_nr', 'bereich_neu', 'item')], by='item_nr') %>% 
+  select(item_nr, bereich_neu, item, everything()) %>% 
+  arrange(match(bereich_neu, c('Einstellung / Bedeutung', 'Wissen / Fertigkeiten')))
+
+tmp2 %>% 
+  kbl(booktabs = T,  digits = 2, centering=F, row.names=FALSE, 
+      col.names=c( 'Item_Nr', 'Bereich', 'Item','Itemschwierigkeit', 'Itemtrennschärfe')) %>% 
+  kable_styling(latex_options = "HOLD_position", position = "left") %>% 
+  column_spec(2, border_left = F, border_right = T) %>% 
+  row_spec(c(0,5,13), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
+```
+
+# 3. Modifizierte Auswahl
+```{r}
+#| label: cfa2
+### Messmodell aufsetzen
+model <- '
+  f1_einstellung =~ v_325 + v_364 + v_365
+  f2_wissen =~ v_321 + v_327 + v_330 + v_331 + v_332
+  f3_verhalten =~ v_329 + v_334 + v_335 + ern_erw + ern_kid + v_346 + v_347 + v_348 + v_349 + v_350 + v_351
+  '
+
+# gestrichen:
+# v_352_357 + v_359
+# v_328, v_360, v_333 (hier evtl. eine andere Kodierung ausprobieren?)
+# v_366
+
+### CFA
+fit <- lavaan::cfa(model=model, data=tmp, std.lv=TRUE, fixed.x=FALSE)
+#summary(fit)
+
+tmp2 <- as.data.frame(fitMeasures(fit, c("rmsea", "cfi", "srmr")))
+
+tmp2 %>%  
+  tibble::rownames_to_column(., 'Index') %>%
+  kbl(booktabs = T,  digits = 4, centering=F, row.names=FALSE, 
+      col.names=c('Index', 'Wert'))
+```
+--> Modell passt noch nicht auf die Daten
+
+
+```{r}
+#| label: faktorladungen2
+# Datensatz mit Ladungsparametern erstellen:
+est <- parameterEstimates(fit, standardized=TRUE) %>% 
+  filter(op == "=~") %>% 
+  select(Factor=lhs, op, Item=rhs, Standardized=est, ci.lower, ci.upper, SE=se, 'p-value'=pvalue)
+
+load <- left_join(est, items[c('item_nr', 'bereich_neu', 'item')], by=c('Item'='item_nr')) %>% 
+  select(bereich_neu, Item, item, Standardized, ci.lower, ci.upper)
+
+load %>% 
+  kbl(booktabs = T,  digits = 2, centering=F, row.names=FALSE, 
+      col.names=c('Bereich', 'Item_Nr', 'Item', 'Ladung', 'KI untere Grenze', 'KI obere Grenze')) %>%
+  kable_styling(latex_options = "HOLD_position", position = "left") %>% 
+  column_spec(c(2,3), border_left = F, border_right = T) %>% 
+  row_spec(c(0,3,8), extra_css = "border-bottom: 1px solid", hline_after=TRUE) 
+```
+
+```{r}
+#| label: trennsch&schwierigkeit2
+#| warning: false
+#| message: false
+ids <- c('v_325', 'v_364', 'v_365', 'v_321', 'v_327', 'v_330', 'v_331', 'v_332', 'v_329', 'v_334', 'v_335', 'ern_erw', 'ern_kid', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351')
+
+tmp2 <- tmp %>% select(any_of(ids))
+
+## Itemschwierigkeiten
+diffic <- psych::alpha(tmp2)[["item.stats"]][["mean"]]/1*100
+diffic <- data.frame(diffic)
+rownames(diffic) <- colnames(tmp2)
+diffic <-round(diffic, digits=3)
+
+## Itemtrennschärfen
+differ <- psych::alpha(tmp2)[["item.stats"]][["r.drop"]]
+differ <- data.frame(differ)
+rownames(differ) <- (tmp2)
+differ <- round(differ, digits=3)
+
+tmp2 <- bind_cols(diffic, differ)
+tmp2 <- tmp2 %>% tibble::rownames_to_column('item_nr')
+tmp2 <- left_join(tmp2, items[c('item_nr', 'bereich_neu', 'item')], by='item_nr') %>% 
+  select(item_nr, bereich_neu, item, everything()) %>% 
+  arrange(match(bereich_neu, c('Einstellung / Bedeutung', 'Wissen / Fertigkeiten')))
+
+tmp2 %>% 
+  kbl(booktabs = T,  digits = 2, centering=F, row.names=FALSE, 
+      col.names=c( 'Item_Nr', 'Bereich', 'Item','Itemschwierigkeit', 'Itemtrennschärfe')) %>% 
+  kable_styling(latex_options = "HOLD_position", position = "left") %>% 
+  column_spec(2, border_left = F, border_right = T) %>% 
+  row_spec(c(0,3,8), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
+```
+
+

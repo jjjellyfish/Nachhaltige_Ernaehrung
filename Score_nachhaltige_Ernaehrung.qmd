@@ -46,7 +46,6 @@ items_auswahl <- items %>% filter(eignung_score %in% c('ja', 'vielleicht')) %>% 
 sust <- dat %>% select(lfdn, any_of(items_auswahl$item_nr))
 ```
 
-
 # 1. Vorbereitung der Items
 
 ## 1.1 Kodierung einzelner Bereiche
@@ -158,7 +157,7 @@ check <- dlookr::diagnose_numeric(sust)
 
 ## 1.2 Transformation & Invertierung
 
-**Transformation** <br> Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor einer Zusammenführung zunächst auf eine einheitliche Skala transformiert werden. Dabei soll die minmale Ausprägung 0 und die maximale Ausprägung 1 sein.
+**Transformation** <br> Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor einer Zusammenführung zunächst auf eine einheitliche Skala transformiert werden. Dabei soll die minimale Ausprägung 0 und die maximale Ausprägung 1 sein.
 
 ```{r}
 #| label: transformation
@@ -188,17 +187,55 @@ sust <- sust %>%
   mutate(across(any_of(ids), ~ 1-.))
 ```
 
+# 2. Messmodell
 
+Quelle: https://doi.org/10.1016/j.jbusres.2008.01.013
 
-# 2. Score bilden
+Bei reflektiven latenten Konstrukten wird angenommen, dass die Variation in einem Indikator X auf die Variation in dem latenten Konstrukt Y zurückgeht. Wenn eine Intervention das latente Konstrukt Y verändert, kann es durch Messung von Indikator X erkannt werden (Kausalitätsrichtung: Konstrukt Y verändert Indikator X). Reflektive Konstrukte erfordern Skalen mit positiv korrelierten Items. Für einen Großteil der psychologischen Skalen werden reflektive latente Konstrukte angenommen, eine Ausnahme sind häufig klinische Störungsbilder.
 
+Bei formativen latenten Konstrukten **formen** verschiedene Indikatoren ein latentes Konstrukt Y. Es gibt keine Annahme bezüglich der Korrelationsstruktur dieser Indikatoren. Die Kausalitätsrichtung ist umgekehrt: eine Veränderung auf den Indikatoren bewirkt eine Veränderung im Konstrukt Y.
 
+#### Theoretische Prüfung des Konstrukts Nachhaltige Ernährung
 
+1.  Die Art des Konstrukts: <br>
 
+    Reflektive latente Konstrukte existieren in einem absoluten Sinne und unabhängig von den Indikatoren, z.B. Einstellungen und Persönlichkeit. Ein formatives latentes Konstrukt existiert nur als Kombination seiner Indikatoren, z.B. der Human Development Index (HDI). <br>
+
+    Nachhaltige Ernährung existiert tendenziell nicht als eigene Entität. Die Nachhaltigkeit der Ernährung setzt sich aus verschiedenen Aspekten zusammen (z.B. wenig bis kein Fleischkonsum, saisonale und regionale Ernährung, wenig Verpackungsmüll etc.).
+
+2.  Richtung der Kausalität <br>
+
+    **reflektiv**: Variation in the construct causes variation in the item measures, variation in item measures does not cause variation in the construct\
+    **formativ**: variation in the construct does not cause variation in the item measures, variation in item measures causes variation in the construct
+
+    ?
+
+3.  Charakteristika der Indikatoren
+
+    Bei reflektiven Konstrukten beinhalten alle Indikatoren ein gemeinsames Motiv (Korrelation der Items), die Indikatoren sind austauschbar und das Hinzufügen oder Entfernen einzelne Indikatoren verändert das Konstrukt nicht konzeptuell.
+
+    Bei formativen Konstrukten teilen die Indikatoren kein gemeinsames Motiv (sie müssen daher nicht korrelieren), die Indikatoren sind nicht austauschbar und das Weglassen von Indikatoren kann das Konstrukt konzeptuell verändern.
+
+    Die verschiedenen Aspekte nachhaltiger Ernährung können, müssen aber nicht notwendigerweise zusammenhängen (z.B. Fleischkonsum & saisonale Ernährung)
+
+**Bei nachhaltiger Ernährung handelst es sich vermutlich um ein formatives Konstrukt.**
+
+#### Empirische Implikationen
+
+-   keine Annahme der Korrelationsstruktur von Indikatoren (keine, niedrige und hohe Korrelationen möglich) --\> Diagnostik von Passung in eingeschränktem Maße möglich
+
+-   da Methoden zur Relaibilitätsprüfung auf der Annahme von interner Konsistenz (Korrelation von Idikatoren) fußen, ist keine einfache universell akzeptierte Prüfung der Relaibilität möglich
+
+```{=html}
+<!-- -->
+```
+-   keine Möglichkeit der Bewertung von Messfehlern
+
+-   Prüfung von Kollinearität besonders wichtig, da Einfluss von Gewichtung bestimmter inhaltlicher Aspekte im Konstrukt
+
+# 3. Score bilden
 
 ```{r}
 #| label: na.omit
 tmp <- sust %>% na.omit()
 ```
-
-

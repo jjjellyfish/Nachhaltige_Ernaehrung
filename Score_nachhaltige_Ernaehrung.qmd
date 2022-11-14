@@ -16,6 +16,8 @@ library(knitr)
 library(kableExtra)
 
 library(lavaan)
+
+options(knitr.kable.NA = '')
 ```
 
 # 0. Prep
@@ -137,8 +139,8 @@ sust <- sust %>%
   mutate(across(any_of(ids), ~na_if(.,0)))
 ```
 
-**Item-Datensatz vervollstäbdigen**
 
+**Item-Datensatz vervollständigen**
 ```{r}
 #| label: add_item_descriptions
 #names(items)
@@ -147,6 +149,21 @@ items <- items %>%
   add_row(item_nr='ern_erw', item='Wie ernähren Sie sich?', bereich='Verhalten', bereich_neu='Verhalten') %>%
   add_row(item_nr='ern_kid', item='Wie ernähren Sie Ihr Kind?', bereich='Verhalten', bereich_neu='Verhalten')
 ```
+
+```{r}
+#| label: overview_items
+sust_items <- names(sust)[2:length(sust)]
+
+items %>%
+  filter(item_nr %in% sust_items) %>%
+  select(item_nr, bereich_neu, item) %>% 
+  arrange(match(bereich_neu, c('Einstellung / Bedeutung', 'Wissen / Fertigkeiten'))) %>%
+  kbl() %>%
+  kable_styling( position = "left") %>% 
+  column_spec(c(1,2), border_left = F, border_right = T) %>% 
+  row_spec(c(0,5,13), extra_css = "border-bottom: 1px solid", hline_after=TRUE) 
+```
+
 
 ##### TO DO!!!
 
@@ -189,7 +206,7 @@ sust <- sust %>%
 
 # 2. Messmodell
 
-Quelle: https://doi.org/10.1016/j.jbusres.2008.01.013
+Quelle: Coltman et al. (2007): Formative versus reflcetive measurement models <https://doi.org/10.1016/j.jbusres.2008.01.013>
 
 Bei reflektiven latenten Konstrukten wird angenommen, dass die Variation in einem Indikator X auf die Variation in dem latenten Konstrukt Y zurückgeht. Wenn eine Intervention das latente Konstrukt Y verändert, kann es durch Messung von Indikator X erkannt werden (Kausalitätsrichtung: Konstrukt Y verändert Indikator X). Reflektive Konstrukte erfordern Skalen mit positiv korrelierten Items. Für einen Großteil der psychologischen Skalen werden reflektive latente Konstrukte angenommen, eine Ausnahme sind häufig klinische Störungsbilder.
 
@@ -208,7 +225,7 @@ Bei formativen latenten Konstrukten **formen** verschiedene Indikatoren ein late
     **reflektiv**: Variation in the construct causes variation in the item measures, variation in item measures does not cause variation in the construct\
     **formativ**: variation in the construct does not cause variation in the item measures, variation in item measures causes variation in the construct
 
-    ?
+    Verscheide Aspekte der klima- und umweltbewussten Ernährung formen gemeinsam eine nachhaltige Ernährung.
 
 3.  Charakteristika der Indikatoren
 
@@ -218,24 +235,74 @@ Bei formativen latenten Konstrukten **formen** verschiedene Indikatoren ein late
 
     Die verschiedenen Aspekte nachhaltiger Ernährung können, müssen aber nicht notwendigerweise zusammenhängen (z.B. Fleischkonsum & saisonale Ernährung)
 
-**Bei nachhaltiger Ernährung handelst es sich vermutlich um ein formatives Konstrukt.**
+**Bei nachhaltiger Ernährung handelt es sich vermutlich um ein formatives Konstrukt.**
 
 #### Empirische Implikationen
 
 -   keine Annahme der Korrelationsstruktur von Indikatoren (keine, niedrige und hohe Korrelationen möglich) --\> Diagnostik von Passung in eingeschränktem Maße möglich
 
--   da Methoden zur Relaibilitätsprüfung auf der Annahme von interner Konsistenz (Korrelation von Idikatoren) fußen, ist keine einfache universell akzeptierte Prüfung der Relaibilität möglich
+-   da Methoden zur Reliabilitätsprüfung auf der Annahme von interner Konsistenz (Korrelation von Indikatoren) fußen, ist keine einfache universell akzeptierte Prüfung der Reliabilität möglich
 
-```{=html}
-<!-- -->
-```
 -   keine Möglichkeit der Bewertung von Messfehlern
 
 -   Prüfung von Kollinearität besonders wichtig, da Einfluss von Gewichtung bestimmter inhaltlicher Aspekte im Konstrukt
+
+
+
+## 2.1 Prüfung des Messmodells
+
+**Exploratorische Faktorenanalyse** <br>
+
+Interpretationshilfe: <https://m-clark.github.io/posts/2020-04-10-psych-explained/>
+```{r}
+#|label: efa_nfactors
+tmp <- sust %>% na.omit()
+
+fafitfree <- psych::fa(tmp, nfactors = ncol(tmp), rotate = "none")
+
+n_factors <- length(fafitfree$e.values)
+scree <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+parallel <- psych::fa.parallel(tmp)
+```
+
+
+```{r}
+#| label: efa
+#| warning: false
+
+### efa
+efa <- psych::fa(r=tmp[,c(-1)], nfactors=6,
+ max.iter=100, 
+ rotate='promax')
+
+### loadings_df
+efa_df <- bind_cols(rownames(efa$loadings), efa$loadings, efa$communality, efa$uniquenesses)
+names(efa_df)[1] <- c('item')
+names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
+
+efa_df2 <- efa_df %>% 
+  mutate(across(2:(ncol(.)-2), ~ifelse(. <= 0.1, NA, .)))
+
+kbl(efa_df2, digits=2)
+```
+
+```{r}
+print(efa)
+```
 
 # 3. Score bilden
 
 ```{r}
 #| label: na.omit
-tmp <- sust %>% na.omit()
+
 ```

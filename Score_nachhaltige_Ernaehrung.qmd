@@ -251,13 +251,25 @@ Bei formativen latenten Konstrukten **formen** verschiedene Indikatoren ein late
 
 ## 2.1 Prüfung des Messmodells
 
+```{r}
+#|label: cor_matrix
+
+tmp <- sust %>% na.omit()
+datamatrix <- cor(tmp[,c(-1)])
+
+corrplot::corrplot(datamatrix, method="color", order='hclust', 
+                   tl.col = "black", tl.cex = 0.7)
+
+corrplot::corrplot(datamatrix, method="number", order='hclust', 
+                   number.cex = 0.7,   tl.col = "black", tl.cex = 0.7)
+```
+
+
 **Exploratorische Faktorenanalyse** <br>
 
 Interpretationshilfe: <https://m-clark.github.io/posts/2020-04-10-psych-explained/>
 ```{r}
 #|label: efa_nfactors
-tmp <- sust %>% na.omit()
-
 fafitfree <- psych::fa(tmp, nfactors = ncol(tmp), rotate = "none")
 
 n_factors <- length(fafitfree$e.values)
@@ -275,30 +287,33 @@ ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) +
 parallel <- psych::fa.parallel(tmp)
 ```
 
-
 ```{r}
 #| label: efa
-#| warning: false
 
-### efa
 efa <- psych::fa(r=tmp[,c(-1)], nfactors=6,
- max.iter=100, 
+ max.iter=100,
  rotate='promax')
+
+print(efa)
+```
+
+
+```{r}
+#| label: loadings_df
+#| warning: false
+#| echo: false
 
 ### loadings_df
 efa_df <- bind_cols(rownames(efa$loadings), efa$loadings, efa$communality, efa$uniquenesses)
 names(efa_df)[1] <- c('item')
 names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
 
-efa_df2 <- efa_df %>% 
-  mutate(across(2:(ncol(.)-2), ~ifelse(. <= 0.1, NA, .)))
+# efa_df2 <- efa_df %>%
+#   mutate(across(2:(ncol(.)-2), ~ifelse(. <= 0.1, NA, .)))
 
-kbl(efa_df2, digits=2)
+write.xlsx(efa_df, file='data/EFA_loadings.xlsx')
 ```
 
-```{r}
-print(efa)
-```
 
 # 3. Score bilden
 

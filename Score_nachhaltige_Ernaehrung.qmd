@@ -10,6 +10,7 @@ toc: true
 #| message: false
 #| warning: false
 library(tidyverse)
+library(janitor)
 library(haven) #Einlesen von .sav oder .dta
 library(xlsx)
 library(knitr)
@@ -165,13 +166,6 @@ items %>%
 ```
 
 
-##### TO DO!!!
-
-```{r diag}
-check <- dlookr::diagnose(sust)
-check <- dlookr::diagnose_numeric(sust)
-```
-
 ## 1.2 Transformation & Invertierung
 
 **Transformation** <br> Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor einer Zusammenführung zunächst auf eine einheitliche Skala transformiert werden. Dabei soll die minimale Ausprägung 0 und die maximale Ausprägung 1 sein.
@@ -197,12 +191,18 @@ Alle Items, die in die umgekehrte Richtung kodiert sind, werden umgedreht.
 
 ```{r}
 #| label: invert
-ids <- c('v_321', 'v_325', 'v_352_357', 'v_364', 'v_365', 'v_327', 'v_330', 'v_331', 'v_332',
-         'v_329', 'v_334', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_366')
+ids <- c('v_325','v_352_357')
 
 sust <- sust %>%
   mutate(across(any_of(ids), ~ 1-.))
 ```
+
+```{r diag}
+check <- dlookr::diagnose(sust) 
+check <- dlookr::diagnose_numeric(sust) %>% select(variables, min, max, everything())
+```
+
+
 
 # 2. Messmodell
 
@@ -249,7 +249,11 @@ Bei formativen latenten Konstrukten **formen** verschiedene Indikatoren ein late
 
 
 
-## 2.1 Prüfung des Messmodells
+## 2.1 CFA: Prüfung auf drei Bereiche
+
+
+## 2.2 EFA: Extraktion von Faktoren
+
 
 ```{r}
 #|label: cor_matrix
@@ -314,9 +318,86 @@ names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
 write.xlsx(efa_df, file='data/EFA_loadings.xlsx')
 ```
 
+```{r}
+alpha <- psych::alpha(select(tmp, contains('v_')), check.keys = F)
+alpha$total$std.alpha
+```
+
+
+
+## 2.3 EFA: Extraktion von Faktoren nach erneuter Itemselektion
+
+```{r}
+#|label: cor_matrix2
+tmp <- sust %>% 
+  select(-v_325, -v_327, -v_328, -v_333, -v_352_357, -v_359, -v_360, -v_366) %>% 
+  na.omit()
+
+datamatrix <- cor(tmp[,c(-1)])
+
+corrplot::corrplot(datamatrix, method="color", order='hclust', 
+                   tl.col = "black", tl.cex = 0.7)
+
+corrplot::corrplot(datamatrix, method="number", order='hclust', 
+                   number.cex = 0.7,   tl.col = "black", tl.cex = 0.7)
+```
+
+
+**Exploratorische Faktorenanalyse** <br>
+
+Interpretationshilfe: <https://m-clark.github.io/posts/2020-04-10-psych-explained/>
+```{r}
+#|label: efa_nfactors2
+fafitfree <- psych::fa(tmp, nfactors = ncol(tmp), rotate = "none")
+
+n_factors <- length(fafitfree$e.values)
+scree <- data.frame(
+  Factor_n =  as.factor(1:n_factors), 
+  Eigenvalue = fafitfree$e.values)
+
+ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+  geom_point() + geom_line() +
+  xlab("Number of factors") +
+  ylab("Initial eigenvalue") +
+  labs( title = "Scree Plot", 
+        subtitle = "(Based on the unreduced correlation matrix)")
+
+parallel <- psych::fa.parallel(tmp)
+```
+
+```{r}
+#| label: efa2
+efa <- psych::fa(r=tmp[,c(-1)], nfactors=5,
+ max.iter=100,
+ rotate='promax')
+
+print(efa)
+```
+
+
+```{r}
+#| label: loadings_df2
+#| warning: false
+#| echo: false
+
+### loadings_df
+efa_df <- bind_cols(rownames(efa$loadings), efa$loadings, efa$communality, efa$uniquenesses)
+names(efa_df)[1] <- c('item')
+names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
+
+# efa_df2 <- efa_df %>%
+#   mutate(across(2:(ncol(.)-2), ~ifelse(. <= 0.1, NA, .)))
+
+write.xlsx(efa_df, file='data/EFA_loadings2.xlsx')
+```
+
+```{r}
+alpha <- psych::alpha(select(tmp, contains('v_')), check.keys = T)
+alpha$total$std.alpha
+```
+
 
 # 3. Score bilden
-
 ```{r}
 #| label: na.omit
 

@@ -422,90 +422,26 @@ alpha$total$std.alpha
 ```
 
 
-## 2.4 EFA: Einfaktorielles Modell
 
-```{r}
-#|label: cor_matrix3
-tmp <- sust %>% 
-  select(lfdn, v_321, v_329, v_335, v_346, v_347, v_348, v_349, v_350, v_364, ern_erw) %>% 
-  na.omit()
-
-datamatrix <- cor(tmp[,c(-1)])
-
-corrplot::corrplot(datamatrix, method="color", order='hclust', 
-                   tl.col = "black", tl.cex = 0.7)
-
-corrplot::corrplot(datamatrix, method="number", order='hclust', 
-                   number.cex = 0.7,   tl.col = "black", tl.cex = 0.7)
-```
-
-
-**Exploratorische Faktorenanalyse** <br>
-
-```{r}
-#| label: efa3
-efa <- psych::fa(r=tmp[,c(-1)], nfactors=1,
- max.iter=100,
- rotate='promax')
-
-print(efa)
-```
-
-
-```{r}
-#| label: loadings_df3
-#| warning: false
-#| echo: false
-
-### loadings_df
-efa_df <- bind_cols(rownames(efa$loadings), efa$loadings, efa$communality, efa$uniquenesses)
-names(efa_df)[1] <- c('item')
-names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
-
-# remove low loadings
-efa_df <- efa_df %>%
-  mutate(across(2:(ncol(.)-2), ~ifelse(abs(.) <= 0.2, NA, .)))
-
-write.xlsx(efa_df, file='data/EFA_loadings3.xlsx')
-```
-
-```{r}
-#| label: alpha3
-alpha <- psych::alpha(select(tmp, contains('v_')), check.keys = F)
-alpha$total$std.alpha
-```
 
 
 # 3. Score bilden
 ```{r}
-#| label: versionen
+#| label: scores
 tmp <- sust %>% na.omit()
 
-v1 <- tmp %>% select(lfdn, v_321, v_325, v_329, v_330, v_331, v_332, v_334, v_335, v_346, v_347, v_348, v_349, v_350, v_351, v_359, v_360, v_364, v_365, ern_erw, ern_kid)
-
-v2 <- tmp %>% select(lfdn, v_321, v_329, v_335, v_346, v_347, v_348, v_349, v_350, v_364, ern_erw)
-```
-
-```{r}
-#| label: scores
-v1 <- v1 %>% mutate(score_v1=rowSums(select(., 2:length(v1)), na.rm=TRUE)/(length(v1)-1))
-v2 <- v2 %>% mutate(score_v2=rowSums(select(., 2:length(v2)), na.rm=TRUE)/(length(v2)-1))
+v1 <- tmp %>% 
+  select(lfdn, v_321, v_325, v_329, v_330, v_331, v_332, v_334, v_335, v_346, v_347, v_348, v_349, v_350, v_351, v_359, v_360, v_364, v_365, ern_erw, ern_kid) %>% 
+  mutate(score_v1=rowSums(select(., 2:length(.)), na.rm=TRUE)/(length(.)-1))
 
 mosaic::favstats(v1$score_v1)
-mosaic::favstats(v2$score_v2)
 ```
 
 ```{r}
-#| label: verteilungen
+#| label: verteilung
 ggplot(v1, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
   ggtitle("Verteilung der Scores - Version 1") +
-  theme_bw() +
-  theme(plot.title = element_text(size=15))
-
-ggplot(v2, aes(x=score_v2)) +
-  geom_histogram(binwidth=0.005, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
-  ggtitle("Verteilung der Scores - Version 2") +
   theme_bw() +
   theme(plot.title = element_text(size=15))
 ```

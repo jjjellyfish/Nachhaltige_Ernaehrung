@@ -518,7 +518,6 @@ v1$co_int5 <- cut(v1$score_v1 , breaks = quantile(v1$score_v1, c(0, .125, .5, .8
 v1$co_m5 <- cut(v1$score_v1 , breaks = quantile(v1$score_v1, c(0, .125, .5, .875, 1)), labels=1:4, include.lowest=TRUE)
 
 
-
 ### Score-basiert
 ## 6. Quintile max. Score
 v1 <- v1 %>% mutate(co_m6=case_when(
@@ -526,36 +525,67 @@ v1 <- v1 %>% mutate(co_m6=case_when(
   score_v1 <= 0.4 ~ 2,
   score_v1 <= 0.6 ~ 3,
   score_v1 <= 0.8 ~ 4,
-  score_v1 <= 1.0 ~ 5
-))
+  score_v1 <= 1.0 ~ 5))
 
 ## 7. Quartile max. Score
 v1 <- v1 %>% mutate(co_m7=case_when(
   score_v1 <= 0.25 ~ 1,
   score_v1 <= 0.5 ~ 2,
   score_v1 <= 0.75 ~ 3,
-  score_v1 <= 1.0 ~ 4,
-))
+  score_v1 <= 1.0 ~ 4))
 
 ## 8. Terzile max. Score
 v1 <- v1 %>% mutate(co_m8=case_when(
   score_v1 <= 1/3 ~ 1,
   score_v1 <= 2/3 ~ 2,
-  score_v1 <= 1.0 ~ 3,
-))
+  score_v1 <= 1.0 ~ 3))
 
 ## 9. Quartile/Terzile max. Score
 v1 <- v1 %>% mutate(co_m9=case_when(
   score_v1 <= 1/3 ~ 1,
   score_v1 <= 0.5 ~ 2,
   score_v1 <= 2/3 ~ 3,
-  score_v1 <= 1.0 ~ 4,
-))
-
+  score_v1 <= 1.0 ~ 4))
 ```
 
 
 ```{r}
 #| label: uebersicht_cutoff_werte
+
 ```
+
+Kovariaten: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
+
+```{r}
+#| label: cutoff_modelle_rechnen
+#Kovariaten vorbereiten
+kovariaten <- c('v_4', 'Alter_Zielkind_2', 'Geschlecht_Zielkind', 'Kinder_unter_14', 'SES_max', 'Migrationsgeschichte', 'GISD_Score', 'Anzahl_HBSC', 'Gesundheitsstatus_Elternteil', 'Gesundheitsstatus_Kind', 'Score_Ernährungskompetenz') #
+kov_string <- toString(paste(kovariaten, collapse = ' + '))
+
+# Datensatz mit Kovariaten vorbereiten
+kovs <- overall_dat %>% select(lfdn, any_of(kovariaten))
+v2 <- left_join(v1, kovs, by='lfdn')
+
+# 'Nullmodell' mit kontinuierlichem Score
+model1 <- paste("score_v1 ~ ", kov_string) 
+
+anv0 <-  aov(eval(parse(text = model1)), data=v2)
+summary(anv0)
+
+
+# ab hier BAUSTELLE
+lm0 <-  lm(eval(parse(text = model1)), data=v2)
+summary(lm0)
+
+## to do: in Funktion packen
+library(broom)
+tidy_aov <- tidy(anv0)
+sum_squares_regression <- tidy_aov$sumsq[1]
+sum_squares_residuals <- tidy_aov$sumsq[2]
+R_squared <- sum_squares_regression /(sum_squares_regression + sum_squares_residuals)
+R_squared
+
+# Aber auch: Wert scheint viel zu hoch: Rechnung stimmt nicht
+```
+
 

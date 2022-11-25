@@ -427,12 +427,16 @@ alpha$total$std.alpha
 
 # 3. Score bilden
 ```{r}
-#| label: scores
-tmp <- sust %>% na.omit()
+#| label: score
+items_v1 <- c('v_321', 'v_325', 'v_329', 'v_330', 'v_331', 'v_332', 'v_334', 'v_335', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_359', 'v_360', 'v_364', 'v_365', 'ern_erw', 'ern_kid')
 
-v1 <- tmp %>% 
-  select(lfdn, v_321, v_325, v_329, v_330, v_331, v_332, v_334, v_335, v_346, v_347, v_348, v_349, v_350, v_351, v_359, v_360, v_364, v_365, ern_erw, ern_kid) %>% 
-  mutate(score_v1=rowSums(select(., 2:length(.)), na.rm=TRUE)/(length(.)-1))
+# nur für vollständig ausgefüllte Items
+v1 <- sust %>% 
+  na.omit() %>%
+  select(lfdn, any_of(items_v1)) %>% 
+  mutate(
+    sum_valid = rowSums(!is.na(select(., 2:length(.)))),
+    score_v1 = rowSums(select(., 2:length(.)), na.rm=TRUE)/ sum_valid)
 
 mosaic::favstats(v1$score_v1)
 ```
@@ -446,5 +450,67 @@ ggplot(v1, aes(x=score_v1)) +
   theme(plot.title = element_text(size=15))
 ```
 
+
+# 4. Cutoff bestimmen
+
+## 4.1 Vorbereitung
+
+### 4.1.1 Fehlden Items
+```{r}
+#| label: fehlende_items 
+v1 <- sust %>% 
+  select(lfdn, any_of(items_v1)) %>% 
+  mutate(
+    sum_valid = rowSums(!is.na(select(., 2:length(.)))),
+    score_v1=rowSums(select(., 2:length(.)), na.rm=TRUE)/ sum_valid)
+
+# Anzahl valider Angaben
+tabyl(v1$sum_valid, show_na = TRUE) %>%  
+  mutate(percent=percent*100) %>%
+  kbl(booktabs = T,  digits = 4, centering=F, row.names=FALSE, 
+      col.names=c('valide Items', 'n', '%'), 
+      caption = 'Fitindizes der angenommenen dreifaktoriellen Struktur des FLQ')%>% 
+  kable_styling(full_width = T)
+
+# Mittelwerte in Abhängigkeit der Anzahl valider Werte
+v1 <- v1 %>% mutate(valid_group=case_when(
+  sum_valid < 10 ~ '<10',
+  between(sum_valid, 10, 17) ~ '10-17',
+  sum_valid>17 ~ '>17'
+))
+
+psych::describeBy(v1$score_v1, group=v1$valid_group, mat=TRUE)
+
+```
+Da die Items zum Teil sehr unterschiedliche Aspekte der nachhaltigen Ernährung abbilden, wird für die Berechnung eines Nachhaltigkeits-Scores ein hoher Anteil an valide beantwortet Items von 90% (18 von 20 Items) vorausgesetzt. 
+Für die Berechnung von Cutoffs werden alle Personen ausgeschlossen, die weniger als 18 Items beantwortet haben (n = `r length(v1$sum_valid[v1$sum_valid<=17])`, `r round(length(v1$sum_valid[v1$sum_valid<=17]) / length(v1$sum_valid),4) * 100`%). Die Brechnung eines Nachhaltigkeits-Scores sowie die folgenden Modelle zur Cut-Off-Wert-Berechnung berücksichtigen ausschließlich Personen mit mindestens 18 beantworteten Nachhaltigkets-Items (n = `r length(v1$sum_valid[v1$sum_valid>17])` von N=`r length(v1$sum_valid)`, `r round(length(v1$sum_valid[v1$sum_valid>17]) / length(v1$sum_valid),4) * 100`%).
+
+
+```{r}
+#| label: fehlende_items2
+v1 <- v1 %>% filter(sum_valid>17) # weiter nur ohne diese Fälle (min. 18 valide Items)
+```
+
+
+### 4.1.2 Cutoff-Modelle festlegen
+Die Festlegung der Cut-Offs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen Nachhaltigen Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kamen sowohl verteilungs- als auch score-basierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen erreichbaren Punktzahl.
+```{r}
+#| label: cutoff_modelle
+### Verteilungsbasiert
+## 1. Quintile
+
+
+## 2. Quartile
+## 3. Terzile
+## 4. Quintile mit kleinen Randgruppen
+## 5. Qaurtile mit kleinen Randgruppen
+
+### Score-basiert
+## 6. Quintile max. Score
+## 7. Quartile max. Score
+## 8. Terzile max. Score
+## 9. Quartile/Terzile max. Score
+
+```
 
 

@@ -11,6 +11,7 @@ toc: true
 #| warning: false
 library(tidyverse)
 library(janitor)
+library(broom)
 library(haven) #Einlesen von .sav oder .dta
 library(xlsx)
 library(knitr)
@@ -36,6 +37,17 @@ dat <- overall_dat %>% select(lfdn, v_309:v_318,
                               contains('Ernährungskompetenz'), 
                               v_319:v_371)
 ```
+
+```{r functions}
+rsquared_aov <- function(aov_result) {
+  tidy_aov <- tidy(aov_result)
+  sum_squares_regression <- sum(tidy_aov$sumsq[1:(length(tidy_aov$sumsq)-1)])
+  sum_squares_residuals <- tidy_aov$sumsq[length(tidy_aov$sumsq)]
+  rsquared <- sum_squares_regression /(sum_squares_regression + sum_squares_residuals)
+  rsquared
+}
+```
+
 
 Vorgehen:
 
@@ -556,6 +568,7 @@ v1 <- v1 %>% mutate(co_m9=case_when(
 
 Kovariaten: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
 
+
 ```{r}
 #| label: cutoff_modelle_rechnen
 #Kovariaten vorbereiten
@@ -565,27 +578,41 @@ kov_string <- toString(paste(kovariaten, collapse = ' + '))
 # Datensatz mit Kovariaten vorbereiten
 kovs <- overall_dat %>% select(lfdn, any_of(kovariaten))
 v2 <- left_join(v1, kovs, by='lfdn')
-
-# 'Nullmodell' mit kontinuierlichem Score
-model1 <- paste("score_v1 ~ ", kov_string) 
-
-anv0 <-  aov(eval(parse(text = model1)), data=v2)
-summary(anv0)
+v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.numeric)
 
 
-# ab hier BAUSTELLE
-lm0 <-  lm(eval(parse(text = model1)), data=v2)
-summary(lm0)
+### 'Nullmodell' mit kontinuierlichem Score
+model0 <- paste("score_v1 ~ ", kov_string)
 
-## to do: in Funktion packen
-library(broom)
-tidy_aov <- tidy(anv0)
-sum_squares_regression <- tidy_aov$sumsq[1]
-sum_squares_residuals <- tidy_aov$sumsq[2]
-R_squared <- sum_squares_regression /(sum_squares_regression + sum_squares_residuals)
-R_squared
+anv0 <-  aov(eval(parse(text = model0)), data=v2)
+#summary(anv0)
+rsquared_aov(anv0)
 
-# Aber auch: Wert scheint viel zu hoch: Rechnung stimmt nicht
+
+### Cutoff-Modelle
+### Verteilungsbasiert: 1. Quintile
+model <- paste("co_m1 ~ ", kov_string) 
+anv1 <-  aov(eval(parse(text = model)), data=v2)
+#summary(anv1)
+rsquared_aov(anv1)
+
+
+## 2. Quartile
+## 3. Terzile
+## 4. Quintile mit kleinen Randgruppen
+## 5. Qauartile mit kleinen Randgruppen
+
+
+### Score-basiert
+## 6. Quintile max. Score
+## 7. Quartile max. Score
+## 8. Terzile max. Score
+## 9. Quartile/Terzile max. Score
+
+```
+
+```{r}
+
 ```
 
 

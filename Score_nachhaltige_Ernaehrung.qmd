@@ -526,6 +526,7 @@ v1 <- v1 %>% filter(sum_valid>17) # weiter nur ohne diese Fälle (min. 18 valide
 
 ### 4.1.2 Cutoff-Modelle festlegen
 Die Festlegung der Cut-Offs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen Nachhaltigen Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kamen sowohl verteilungs- als auch score-basierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen erreichbaren Punktzahl.
+
 ```{r}
 #| label: cutoff_modelle
 ### Verteilungsbasiert
@@ -592,7 +593,7 @@ models <- c('Nullmodell', '1. Quintile', '2. Quartile', '3. Terzile', '4. Quinti
 
 UCLA-Guide für ordinale Modelle: <https://stats.oarc.ucla.edu/r/dae/ordinal-logistic-regression/>
 ```{r}
-#| label: cutoff_lineare_modelle
+#| label: cutoff_modellbewertung
 #Kovariaten vorbereiten
 kovariaten <- c('v_4', 'Alter_Zielkind_2', 'Geschlecht_Zielkind', 'Kinder_unter_14', 'SES_max', 'Migrationsgeschichte', 'GISD_Score', 'Anzahl_HBSC', 'Gesundheitsstatus_Elternteil', 'Gesundheitsstatus_Kind', 'Score_Ernährungskompetenz') #
 kov_string <- toString(paste(kovariaten, collapse = ' + '))
@@ -611,7 +612,6 @@ for (i in seq_along(tmp)) {
   R2_linear[[i]] <- rsquared_aov(tmp[[i]], v2)
 }
 
-
 ### R² aus ordinalen Modellen
 v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.factor)
 tmp <- select(v2, contains('co_m'))
@@ -625,7 +625,11 @@ pR2_nagel <- vector("double", length(tmp))
 for (i in seq_along(tmp)) {            
   pR2_nagel[[i]] <- pR2_nagelkerke(tmp[[i]], v2)
 }
+
+### Korrelation mit linearem Score
+
 ```
+
 
 
 

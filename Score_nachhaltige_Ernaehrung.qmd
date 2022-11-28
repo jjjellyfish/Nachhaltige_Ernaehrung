@@ -39,13 +39,15 @@ dat <- overall_dat %>% select(lfdn, v_309:v_318,
 ```
 
 ```{r functions}
-rsquared_aov <- function(aov_result) {
+rsquared_aov <- function(model) {
+  aov_result <-  aov(eval(parse(text = model)), data=v2)
   tidy_aov <- tidy(aov_result)
   sum_squares_regression <- sum(tidy_aov$sumsq[1:(length(tidy_aov$sumsq)-1)])
   sum_squares_residuals <- tidy_aov$sumsq[length(tidy_aov$sumsq)]
   rsquared <- sum_squares_regression /(sum_squares_regression + sum_squares_residuals)
   rsquared
 }
+
 ```
 
 
@@ -568,9 +570,9 @@ v1 <- v1 %>% mutate(co_m9=case_when(
 
 Kovariaten: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
 
-
+#### lineare Modelle
 ```{r}
-#| label: cutoff_modelle_rechnen
+#| label: cutoff_lineare_modelle
 #Kovariaten vorbereiten
 kovariaten <- c('v_4', 'Alter_Zielkind_2', 'Geschlecht_Zielkind', 'Kinder_unter_14', 'SES_max', 'Migrationsgeschichte', 'GISD_Score', 'Anzahl_HBSC', 'Gesundheitsstatus_Elternteil', 'Gesundheitsstatus_Kind', 'Score_Ernährungskompetenz') #
 kov_string <- toString(paste(kovariaten, collapse = ' + '))
@@ -582,34 +584,93 @@ v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.numeric)
 
 
 ### 'Nullmodell' mit kontinuierlichem Score
-model0 <- paste("score_v1 ~ ", kov_string)
-
-anv0 <-  aov(eval(parse(text = model0)), data=v2)
-#summary(anv0)
-rsquared_aov(anv0)
-
+model <- paste("score_v1 ~ ", kov_string)
+r2 <- rsquared_aov(model)
 
 ### Cutoff-Modelle
 ### Verteilungsbasiert: 1. Quintile
 model <- paste("co_m1 ~ ", kov_string) 
-anv1 <-  aov(eval(parse(text = model)), data=v2)
-#summary(anv1)
-rsquared_aov(anv1)
-
+r2 <- c(r2, rsquared_aov(model))
 
 ## 2. Quartile
-## 3. Terzile
-## 4. Quintile mit kleinen Randgruppen
-## 5. Qauartile mit kleinen Randgruppen
+model <- paste("co_m2 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
 
+## 3. Terzile
+model <- paste("co_m3 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+
+## 4. Quintile mit kleinen Randgruppen
+model <- paste("co_m4 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+
+## 5. Qauartile mit kleinen Randgruppen
+model <- paste("co_m5 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
 
 ### Score-basiert
 ## 6. Quintile max. Score
+model <- paste("co_m6 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+
 ## 7. Quartile max. Score
+model <- paste("co_m7 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+
 ## 8. Terzile max. Score
+model <- paste("co_m8 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+
 ## 9. Quartile/Terzile max. Score
+model <- paste("co_m9 ~ ", kov_string) 
+r2 <- c(r2, rsquared_aov(model))
+```
+
+
+#### ordinale Modelle
+UCLA-Guide: <https://stats.oarc.ucla.edu/r/dae/ordinal-logistic-regression/>
+
+```{r}
+#| label: cutoff_ordinale_modelle
+v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.factor)
+
+model <- paste("co_m1 ~ ", kov_string)
+ord_null <-  MASS::polr(co_m1 ~ 1, data=v2, Hess=TRUE)
+ord_result <-  MASS::polr(eval(parse(text = model)), data=v2, Hess=TRUE)
+
+pR2_mcfadden <- function(var, dat) {
+  model <- paste('{var} ~ ', kov_string)
+  ord_null <-  MASS::polr(co_m1 ~ 1, data=dat, Hess=TRUE)
+  ord_result <-  MASS::polr(eval(parse(text = model)), data=dat, Hess=TRUE)
+  pR2_mcfadden <-  1 - ord_result$deviance / ord_null$deviance
+  return(pR2_mcfadden)
+}
+
+pR2_mcfadden(v2$co_m1, v2)
+
+
+pR2_nagelkerke <- function(var, dat) {
+  model <- paste('{var} ~ ', kov_string)
+  ord_result <-  rms::lrm(eval(parse(text = model)), data=dat)
+  pR2_nagelkerke <- as.numeric(ord_result$stats["R2"])
+  return(pR2_nagelkerke)
+}
+
+pR2_nagelkerke(v2$co_m1, v2)
+
+
+ord_result <-  rms::lrm(eval(parse(text = model)), data=v2)
+print(ord_result)
+
+pR2_nagelkerke <- as.numeric(ord_result$stats["R2"])
+
+pR2_mcfadden = 1 - ord_result$deviance[2] / ord_result$deviance[1]
+
+R2Measures(ord_result)
+
 
 ```
+
 
 ```{r}
 

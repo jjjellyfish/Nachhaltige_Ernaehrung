@@ -39,15 +39,33 @@ dat <- overall_dat %>% select(lfdn, v_309:v_318,
 ```
 
 ```{r functions}
-rsquared_aov <- function(model) {
-  aov_result <-  aov(eval(parse(text = model)), data=v2)
+rsquared_aov <- function(var, dat) {
+  # berechne R² aus Anovas, Variablen müssen numerisch sein
+  model <- paste('{var} ~ ', kov_string)
+  aov_result <-  aov(eval(parse(text = model)), data=dat)
   tidy_aov <- tidy(aov_result)
   sum_squares_regression <- sum(tidy_aov$sumsq[1:(length(tidy_aov$sumsq)-1)])
   sum_squares_residuals <- tidy_aov$sumsq[length(tidy_aov$sumsq)]
   rsquared <- sum_squares_regression /(sum_squares_regression + sum_squares_residuals)
-  rsquared
+  return(rsquared)
 }
 
+pR2_mcfadden <- function(var, dat) {
+  # berechne Pseudo-R² nach McFadden aus ordinaler Regression, Variablen müssen Faktoren sein
+  model <- paste('{var} ~ ', kov_string)
+  ord_null <-  MASS::polr(co_m1 ~ 1, data=dat, Hess=TRUE)
+  ord_result <-  MASS::polr(eval(parse(text = model)), data=dat, Hess=TRUE)
+  pR2_mcfadden <-  1 - ord_result$deviance / ord_null$deviance
+  return(pR2_mcfadden)
+}
+
+pR2_nagelkerke <- function(var, dat) {
+  # berechne Pseudo-R² nach Nagelkerke aus ordinaler Regression, Variablen müssen Faktoren sein
+  model <- paste('{var} ~ ', kov_string)
+  ord_result <-  rms::lrm(eval(parse(text = model)), data=dat)
+  pR2_nagelkerke <- as.numeric(ord_result$stats["R2"])
+  return(pR2_nagelkerke)
+}
 ```
 
 
@@ -565,12 +583,14 @@ v1 <- v1 %>% mutate(co_m9=case_when(
 
 ```{r}
 #| label: uebersicht_cutoff_werte
-
+models <- c('Nullmodell', '1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quartile/Terzile max. Score')
 ```
 
-Kovariaten: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
+**Kovariaten**: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
+<br><br>
 
-#### lineare Modelle
+
+UCLA-Guide für ordinale Modelle: <https://stats.oarc.ucla.edu/r/dae/ordinal-logistic-regression/>
 ```{r}
 #| label: cutoff_lineare_modelle
 #Kovariaten vorbereiten
@@ -580,100 +600,34 @@ kov_string <- toString(paste(kovariaten, collapse = ' + '))
 # Datensatz mit Kovariaten vorbereiten
 kovs <- overall_dat %>% select(lfdn, any_of(kovariaten))
 v2 <- left_join(v1, kovs, by='lfdn')
+
+
+### R² aus linearen Modelle
 v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.numeric)
+tmp <- select(v2, score_v1, contains('co_m'))
+
+R2_linear <- vector("double", length(tmp))
+for (i in seq_along(tmp)) {            
+  R2_linear[[i]] <- rsquared_aov(tmp[[i]], v2)
+}
 
 
-### 'Nullmodell' mit kontinuierlichem Score
-model <- paste("score_v1 ~ ", kov_string)
-r2 <- rsquared_aov(model)
-
-### Cutoff-Modelle
-### Verteilungsbasiert: 1. Quintile
-model <- paste("co_m1 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 2. Quartile
-model <- paste("co_m2 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 3. Terzile
-model <- paste("co_m3 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 4. Quintile mit kleinen Randgruppen
-model <- paste("co_m4 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 5. Qauartile mit kleinen Randgruppen
-model <- paste("co_m5 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-### Score-basiert
-## 6. Quintile max. Score
-model <- paste("co_m6 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 7. Quartile max. Score
-model <- paste("co_m7 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 8. Terzile max. Score
-model <- paste("co_m8 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-
-## 9. Quartile/Terzile max. Score
-model <- paste("co_m9 ~ ", kov_string) 
-r2 <- c(r2, rsquared_aov(model))
-```
-
-
-#### ordinale Modelle
-UCLA-Guide: <https://stats.oarc.ucla.edu/r/dae/ordinal-logistic-regression/>
-
-```{r}
-#| label: cutoff_ordinale_modelle
+### R² aus ordinalen Modellen
 v2 <- v2 %>% mutate_at(vars(contains('co_m')), as.factor)
+tmp <- select(v2, contains('co_m'))
 
-model <- paste("co_m1 ~ ", kov_string)
-ord_null <-  MASS::polr(co_m1 ~ 1, data=v2, Hess=TRUE)
-ord_result <-  MASS::polr(eval(parse(text = model)), data=v2, Hess=TRUE)
-
-pR2_mcfadden <- function(var, dat) {
-  model <- paste('{var} ~ ', kov_string)
-  ord_null <-  MASS::polr(co_m1 ~ 1, data=dat, Hess=TRUE)
-  ord_result <-  MASS::polr(eval(parse(text = model)), data=dat, Hess=TRUE)
-  pR2_mcfadden <-  1 - ord_result$deviance / ord_null$deviance
-  return(pR2_mcfadden)
+pR2_mcfad <- vector("double", length(tmp))
+for (i in seq_along(tmp)) {            
+  pR2_mcfad[[i]] <- pR2_mcfadden(tmp[[i]], v2)
 }
 
-pR2_mcfadden(v2$co_m1, v2)
-
-
-pR2_nagelkerke <- function(var, dat) {
-  model <- paste('{var} ~ ', kov_string)
-  ord_result <-  rms::lrm(eval(parse(text = model)), data=dat)
-  pR2_nagelkerke <- as.numeric(ord_result$stats["R2"])
-  return(pR2_nagelkerke)
+pR2_nagel <- vector("double", length(tmp))
+for (i in seq_along(tmp)) {            
+  pR2_nagel[[i]] <- pR2_nagelkerke(tmp[[i]], v2)
 }
-
-pR2_nagelkerke(v2$co_m1, v2)
-
-
-ord_result <-  rms::lrm(eval(parse(text = model)), data=v2)
-print(ord_result)
-
-pR2_nagelkerke <- as.numeric(ord_result$stats["R2"])
-
-pR2_mcfadden = 1 - ord_result$deviance[2] / ord_result$deviance[1]
-
-R2Measures(ord_result)
-
-
 ```
 
 
-```{r}
 
-```
 
 

@@ -476,7 +476,7 @@ mosaic::favstats(v1$score_v1)
 ```{r}
 #| label: verteilung
 ggplot(v1, aes(x=score_v1)) +
-  geom_histogram(binwidth=0.005, fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
   ggtitle("Verteilung der Scores - Version 1") +
   theme_bw() +
   theme(plot.title = element_text(size=15))
@@ -584,7 +584,7 @@ v1 <- v1 %>% mutate(co_m9=case_when(
 
 ```{r}
 #| label: uebersicht_cutoff_werte
-models <- c('Nullmodell', '1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quartile/Terzile max. Score')
+models <- c('Original', '1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quartile/Terzile max. Score')
 ```
 
 **Kovariaten**: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
@@ -620,17 +620,86 @@ pR2_mcfad <- vector("double", length(tmp))
 for (i in seq_along(tmp)) {            
   pR2_mcfad[[i]] <- pR2_mcfadden(tmp[[i]], v2)
 }
+pR2_mcfad <- c(NA, pR2_mcfad)
 
 pR2_nagel <- vector("double", length(tmp))
 for (i in seq_along(tmp)) {            
   pR2_nagel[[i]] <- pR2_nagelkerke(tmp[[i]], v2)
 }
+pR2_nagel <- c(NA, pR2_nagel)
+
 
 ### Korrelation mit linearem Score
-
+rho <- v2 %>% 
+  select(score_v1, contains('co_m')) %>%
+  summarise(across(-score_v1, ~ Hmisc::rcorr(.x, score_v1, type = 'spearman')$r[2])) %>%
+  unlist() 
+rho <- as.numeric(c(1, rho))
 ```
 
 
+```{r}
+#| label: cutoff_modellbewertung_output
+tmp <- tibble(models, R2_linear, pR2_mcfad, pR2_nagel, rho)
+
+tmp %>% 
+  kbl(booktabs = T,  digits = 3, centering=F, row.names=FALSE, 
+      col.names=c('Score / Modell', 'Adjusted R²', 'McFadden', 'Nagelkerke', 'Nachhaltigkeits-Score'), 
+      caption = 'Aufgeklärte Varianz in Regressionsmodellen und Korrelationen mit dem kontinuierlichen Nachhaltigkeits-Score') %>%
+  add_header_above(c('', 'Lineare Regression'=1, 'Ordinale Regression\n Pseudo R²'=2, 'Spearman-Rho\n Korrelation'=1)) %>%
+  kable_styling(position = "left") %>% 
+  row_spec(c(1,6), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
+```
+
+
+```{r}
+#| label: cutoff_modellbewertung_plot
+#### Verteilungsbasiert
+## Modell 2
+#tabyl(v2$co_int2)
+ggplot(v2, aes(x=score_v1)) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
+  ggtitle("Cutoffs Modell 2: vertilungsbasiert, Quartile") +
+  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
+  ylab("Häufigkeit") +
+  theme_bw() +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = c(0.472, 0.553, 0.641), linetype="dotted", color = "#bd182d", size=1)
+
+## Modell 3
+#tabyl(v2$co_int3)
+ggplot(v2, aes(x=score_v1)) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
+  ggtitle("Cutoffs Modell 3: verteilungsbasiert, Terzile") +
+  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
+  ylab("Häufigkeit") +
+  theme_bw() +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = c(0.501, 0.609), linetype="dotted", color = "#bd182d", size=1)
+
+
+#### Basiert auf maximalem Score
+## Modell 6
+ggplot(v2, aes(x=score_v1)) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
+  ggtitle("Cutoffs Modell 6: max. Score basiert, Quintile") +
+  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
+  ylab("Häufigkeit") +
+  theme_bw() +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = c(0.2, 0.4, 0.6, 0.8), linetype="dotted", color = "#bd182d", size=1)
+
+## Modell 7
+#tabyl(v2$co_int3)
+ggplot(v2, aes(x=score_v1)) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
+  ggtitle("Cutoffs Modell 6: max. Score basiert, Quartile") +
+  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
+  ylab("Häufigkeit") +
+  theme_bw() +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = c(0.25, 0.5, 0.75), linetype="dotted", color = "#bd182d", size=1)
+```
 
 
 

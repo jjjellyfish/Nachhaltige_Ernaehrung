@@ -229,18 +229,13 @@ TABELLE
 
 ## 2.2 Transformation der Items
 
-TEXT zu Kodierung
-
-**Transformation** <br> Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor einer Zusammenführung zunächst auf eine einheitliche Skala transformiert werden. Dabei soll die minimale Ausprägung 0 und die maximale Ausprägung 1 sein.
-
-**Invertierung** <br> Die Items sollen so kodiert sein, dass ein hoher numerischer Wert (Max 1) mit maximal nachhaltiger Ernährung einhergeht. Ein niedriger Wert (Min 0) bedeutet umgekehrt eine wenig nachhaltige Ernährung.
-
-Alle Items, die in die umgekehrte Richtung kodiert sind, werden umgedreht.
+Zur Vorbereitung der weiteren Verarbeitung werden alle Items so kodiert, dass ein hoher numerischer Wert mit maximal nachhaltiger Ernährung einhergeht. Ein niedriger Wert bedeutet umgekehrt eine wenig nachhaltige Ernährung. 
+Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor der Zusammenführung zu einer Nachhaltigkeits-Skala zudem auf eine einheitliche Antwortskala transformiert werden. Dabei wird die als minimale Ausprägung 0 und als maximale Ausprägung 1 gewählt. Somit weist auch der später gebildete Nachhaltigkeits-Score eine Range zwischen 0 und 1 auf.  
 
 
 ## 2.3 Prüfung der Itemselektion mittels EFA
 
-TEXT 
+Mittels einer exploratorischen Faktorenanalyse (EFA) wird überprüft, ob sich die Items inhaltlich sinnvollen zugrundeliegenden Faktoren der nachhaltigen Ernährung zuordnen lassen. Die EFA dient somit ein Stück weit einer Überprüfung der getroffenen Itemauswahl.  
 
 
 ::: {.content-hidden unless-format="pdf"}
@@ -375,6 +370,8 @@ tabyl(v1$sum_valid, show_na = TRUE) %>%
   \linebreak
 
 # LESEZEICHEN:
+Bildung des Scores: Mittelwert aus allen Items 
+
 überarbeiten, bessere Gruppierung darstellen
 
 Mittelwerte nach Anzahl valide beantworteter Items: 

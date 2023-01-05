@@ -3,6 +3,9 @@
 .RData
 .Ruserdata
 /data
+/00_alt
 /Score_nachhaltige_Ernaehrung_files
+
+# ignore data types
 *.html
 *.xlsx

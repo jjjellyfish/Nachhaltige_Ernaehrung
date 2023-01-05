@@ -1,14 +1,17 @@
 ---
 title: "Score Nachhaltige Ernährung"
 author: "IGES Institut"
-format: html
-editor: visual
-toc: true
+format:
+  html:
+    embed-resources: true
+    toc: true
+editor: source
 ---
 
 ```{r setup}
 #| message: false
 #| warning: false
+#| echo: false
 library(tidyverse)
 library(janitor)
 library(broom)
@@ -22,6 +25,8 @@ library(lavaan)
 options(knitr.kable.NA = '')
 ```
 
+
+::: {.content-hidden unless-format="pdf"}
 # 0. Prep
 
 ```{r data}
@@ -39,6 +44,12 @@ dat <- overall_dat %>% select(lfdn, v_309:v_318,
 ```
 
 ```{r functions}
+kbl2 = function(...) {
+  # wrapper-Funktion für Tabellen
+  kableExtra::kbl(..., booktabs = T, digits=2, centering=F, row.names=FALSE, full.width=T) %>% 
+    kable_styling(latex_options = "HOLD_position", position = "left")
+}
+
 rsquared_aov <- function(var, dat) {
   # berechne R² aus Anovas, Variablen müssen numerisch sein
   model <- paste('{var} ~ ', kov_string)
@@ -72,8 +83,9 @@ pR2_nagelkerke <- function(var, dat) {
 Vorgehen:
 
 -   zunächst werden Punkte gemäß der jeweiligen Skala vergeben
--   im nächsten Schritt werden Items auf eine gemeinsame Skala zwischen 0 & 1 transformiert (siehe hierfür https://www.ibm.com/support/pages/transforming-different-likert-scales-common-scale)
--   der Nachhaltigkeitsscore wird für jede Person von 0 bis 100 ausgegeben
+-   im nächsten Schritt werden Items auf eine gemeinsame Skala zwischen 0 & 1 transformiert (siehe hierfür <https://www.ibm.com/support/pages/transforming-different-likert-scales-common-scale>)
+-   der Nachhaltigkeitsscore wird für jede Person von 0 bis 1 ausgegeben
+
 
 ```{r sust}
 # Itemauswahl
@@ -183,8 +195,11 @@ items <- items %>%
   add_row(item_nr='ern_kid', item='Wie ernähren Sie Ihr Kind?', bereich='Verhalten', bereich_neu='Verhalten')
 ```
 
+:::
+
 ```{r}
 #| label: overview_items
+#| echo: false
 sust_items <- names(sust)[2:length(sust)]
 
 items %>%
@@ -197,6 +212,8 @@ items %>%
   row_spec(c(0,5,13), extra_css = "border-bottom: 1px solid", hline_after=TRUE) 
 ```
 
+
+::: {.content-hidden unless-format="pdf"}
 
 ## 1.2 Transformation & Invertierung
 
@@ -454,12 +471,14 @@ alpha$total$std.alpha
 ```
 
 
-
+:::
 
 
 # 3. Score bilden
 ```{r}
 #| label: score
+#| echo: false
+#| message: false
 items_v1 <- c('v_321', 'v_325', 'v_329', 'v_330', 'v_331', 'v_332', 'v_334', 'v_335', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_359', 'v_360', 'v_364', 'v_365', 'ern_erw', 'ern_kid')
 
 # nur für vollständig ausgefüllte Items
@@ -475,6 +494,7 @@ mosaic::favstats(v1$score_v1)
 
 ```{r}
 #| label: verteilung
+#| echo: false
 ggplot(v1, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
   ggtitle("Verteilung der Scores - Version 1") +
@@ -487,9 +507,10 @@ ggplot(v1, aes(x=score_v1)) +
 
 ## 4.1 Vorbereitung
 
-### 4.1.1 Fehlden Items
+### 4.1.1 Fehlende Items
 ```{r}
-#| label: fehlende_items 
+#| label: fehlende_items
+#| echo: false
 v1 <- sust %>% 
   select(lfdn, any_of(items_v1)) %>% 
   mutate(
@@ -501,9 +522,16 @@ tabyl(v1$sum_valid, show_na = TRUE) %>%
   mutate(percent=percent*100) %>%
   kbl(booktabs = T,  digits = 4, centering=F, row.names=FALSE, 
       col.names=c('valide Items', 'n', '%'), 
-      caption = 'Fitindizes der angenommenen dreifaktoriellen Struktur des FLQ')%>% 
+      caption = 'Häufigkeitstabelle nach Anzahl valide benatworteter Nachhaltigkeits-Items')%>% 
   kable_styling(full_width = T)
+```
 
+  \linebreak
+
+Mittelwerte nach Anzahl valide beantworteter Items: 
+```{r}
+#| label: fehlende_items2
+#| echo: false
 # Mittelwerte in Abhängigkeit der Anzahl valider Werte
 v1 <- v1 %>% mutate(valid_group=case_when(
   sum_valid < 10 ~ '<10',
@@ -511,24 +539,29 @@ v1 <- v1 %>% mutate(valid_group=case_when(
   sum_valid>17 ~ '>17'
 ))
 
-psych::describeBy(v1$score_v1, group=v1$valid_group, mat=TRUE)
+tmp <- psych::describeBy(v1$score_v1, group=v1$valid_group, mat=TRUE) %>%
+  select(item:range, -item, -vars)
 
+tmp %>% kbl2()
 ```
+
+
 Da die Items zum Teil sehr unterschiedliche Aspekte der nachhaltigen Ernährung abbilden, wird für die Berechnung eines Nachhaltigkeits-Scores ein hoher Anteil an valide beantwortet Items von 90% (18 von 20 Items) vorausgesetzt. 
 Für die Berechnung von Cutoffs werden alle Personen ausgeschlossen, die weniger als 18 Items beantwortet haben (n = `r length(v1$sum_valid[v1$sum_valid<=17])`, `r round(length(v1$sum_valid[v1$sum_valid<=17]) / length(v1$sum_valid),4) * 100`%). Die Brechnung eines Nachhaltigkeits-Scores sowie die folgenden Modelle zur Cut-Off-Wert-Berechnung berücksichtigen ausschließlich Personen mit mindestens 18 beantworteten Nachhaltigkets-Items (n = `r length(v1$sum_valid[v1$sum_valid>17])` von N=`r length(v1$sum_valid)`, `r round(length(v1$sum_valid[v1$sum_valid>17]) / length(v1$sum_valid),4) * 100`%).
 
 
 ```{r}
-#| label: fehlende_items2
+#| label: fehlende_items3
 v1 <- v1 %>% filter(sum_valid>17) # weiter nur ohne diese Fälle (min. 18 valide Items)
 ```
 
 
 ### 4.1.2 Cutoff-Modelle festlegen
-Die Festlegung der Cut-Offs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen Nachhaltigen Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kamen sowohl verteilungs- als auch score-basierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen erreichbaren Punktzahl.
+Die Festlegung der Cut-Offs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen Nachhaltiger Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kommen sowohl verteilungs- als auch scorebasierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen erreichbaren Punktzahl.
 
 ```{r}
 #| label: cutoff_modelle
+#| echo: false
 ### Verteilungsbasiert
 ## 1. Quintile
 v1$co_int1 <- ggplot2::cut_number(v1$score_v1, 5)
@@ -573,27 +606,57 @@ v1 <- v1 %>% mutate(co_m8=case_when(
   score_v1 <= 2/3 ~ 2,
   score_v1 <= 1.0 ~ 3))
 
-## 9. Quartile/Terzile max. Score
+## 9. Quintile/Quartile max. Score
 v1 <- v1 %>% mutate(co_m9=case_when(
-  score_v1 <= 1/3 ~ 1,
-  score_v1 <= 0.5 ~ 2,
-  score_v1 <= 2/3 ~ 3,
+  score_v1 <= 0.4 ~ 1,
+  score_v1 <= 0.6 ~ 2,
+  score_v1 <= 0.75 ~ 3,
   score_v1 <= 1.0 ~ 4))
 ```
 
-
+Die Modelle 1 bis 5 basieren auf der Verteilung des nachhaltigkeits-Scores in der Stichprobe, die Modelle 6 bis 9 basieren auf dem maximal erreichbaren Score (= 1).
 ```{r}
 #| label: uebersicht_cutoff_werte
-models <- c('Original', '1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quartile/Terzile max. Score')
+#| echo: false
+models <- c('1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quintile/Quartile max. Score')
+
+n_groups <- c(5, 4, 3, 5, 4, 5, 4, 3, 4)
+cutoffs <- c('0.452, 0.523, .587, .663',
+             '0.472, 0.553, .641',
+             '0.501, 0.609',
+             '0.411, 0.515, .595, .705',
+             '0.411, 0.553, .705',
+             '0.200, 0.400, 0.600, 0.800', 
+             '0.250, 0.500, 0.750', 
+             '0.333, 0.666',
+             '0.400, 0.600, 0.750'
+)
+
+tmp <- tibble(models, n_groups, cutoffs)
+tmp %>% 
+  kbl2(col.names=c('Modell', 'Anazahl Gruppen', 'Cutoff-Werte'), 
+      caption = 'Übersicht über die Cut-Off-Werte der betrachteten Modelle') %>%
+  row_spec(c(5), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
 ```
 
-**Kovariaten**: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes
+
+### 4.1.3 Modellbewertung
+
+**Kovariaten**: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes, Score der Ernährungskompetenz
 <br><br>
 
-
+::: {.content-hidden unless-format="pdf"}
 UCLA-Guide für ordinale Modelle: <https://stats.oarc.ucla.edu/r/dae/ordinal-logistic-regression/>
+:::
+
+Für die verschiedenen Cut-Off-Modelle wird zunächst der Anteil aufgeklärter Varianz in linearen Regressionen berechnet und mit der des kontinuierlichen Nachhaltigkeits-Scores verglichen. Zusätzlich werden ordinale Regressionen für die gebildeten Nachhaltigkeits-Gruppen als jeweils abhängige Variable und den o.g. Kovariaten gerechnet. Darüber hinaus wird die Korrelation (Spearman-Rho) zwischen den Nachhaltigkeits-Gruppen und dem Nachhaltigkeits-Score berechnet.
+<br>
+
+Die am besten geeigneten Cut-Off-Modelle werden anhand des minimalsten **external information loss** (d.h. höchste aufgeklärte Varianz [R² und Pseudo R² in den linearen und ordinalen Modellen]) so-wie des minimalsten **internal information loss** (maximale Korrelationen der Nachhaltigkeits-Gruppen mit dem Nachhaltigkeits-Score) bestimmt.
+
 ```{r}
 #| label: cutoff_modellbewertung
+#| echo: false
 #Kovariaten vorbereiten
 kovariaten <- c('v_4', 'Alter_Zielkind_2', 'Geschlecht_Zielkind', 'Kinder_unter_14', 'SES_max', 'Migrationsgeschichte', 'GISD_Score', 'Anzahl_HBSC', 'Gesundheitsstatus_Elternteil', 'Gesundheitsstatus_Kind', 'Score_Ernährungskompetenz') #
 kov_string <- toString(paste(kovariaten, collapse = ' + '))
@@ -637,49 +700,83 @@ rho <- v2 %>%
 rho <- as.numeric(c(1, rho))
 ```
 
-
 ```{r}
 #| label: cutoff_modellbewertung_output
+#| echo: false
+models <- c('Original', models)
 tmp <- tibble(models, R2_linear, pR2_mcfad, pR2_nagel, rho)
 
 tmp %>% 
-  kbl(booktabs = T,  digits = 3, centering=F, row.names=FALSE, 
-      col.names=c('Score / Modell', 'Adjusted R²', 'McFadden', 'Nagelkerke', 'Nachhaltigkeits-Score'), 
+  kbl2(col.names=c('Score / Modell', 'Adjusted R²', 'McFadden', 'Nagelkerke', 'Nachhaltigkeits-Score'), 
       caption = 'Aufgeklärte Varianz in Regressionsmodellen und Korrelationen mit dem kontinuierlichen Nachhaltigkeits-Score') %>%
-  add_header_above(c('', 'Lineare Regression'=1, 'Ordinale Regression\n Pseudo R²'=2, 'Spearman-Rho\n Korrelation'=1)) %>%
-  kable_styling(position = "left") %>% 
+  add_header_above(c('', 'Lineare Regression  R²'=1, 'Ordinale Regression\n Pseudo R²'=2, 'Spearman-Rho\n Korrelation'=1)) %>%
   row_spec(c(1,6), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
 ```
 
+  \linebreak
+    \linebreak
+
+### 4.1.4 ausgewählte Modelle
+
+#### ausgewählte verteilungsbasierte Modelle
 
 ```{r}
-#| label: cutoff_modellbewertung_plot
-#### Verteilungsbasiert
+#| label: cutoff_m2
+#| echo: false
 ## Modell 2
-#tabyl(v2$co_int2)
+tabyl(v2$co_m2) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 2: verteilungsbasiert, Quartile')
+
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 2: vertilungsbasiert, Quartile") +
+  ggtitle("Cutoffs Modell 2: verteilungsbasiert, Quartile") +
   xlab("kontinuierlicher Nachhaltigkeits-Score") + 
   ylab("Häufigkeit") +
   theme_bw() +
   theme(plot.title = element_text(size=15)) +
   geom_vline(xintercept = c(0.472, 0.553, 0.641), linetype="dotted", color = "#bd182d", size=1)
+```
 
-## Modell 3
-#tabyl(v2$co_int3)
+  \linebreak
+    \linebreak
+
+```{r}
+#| label: cutoff_m5
+#| echo: false
+## Modell 5
+tabyl(v2$co_m5) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 5: verteilungsbasiert, Quartile mit kleinen Randgruppen')
+
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 3: verteilungsbasiert, Terzile") +
+  ggtitle("Cutoffs Modell 5: verteilungsbasiert, Quartile mit kleinen Randgruppen") +
   xlab("kontinuierlicher Nachhaltigkeits-Score") + 
   ylab("Häufigkeit") +
   theme_bw() +
   theme(plot.title = element_text(size=15)) +
-  geom_vline(xintercept = c(0.501, 0.609), linetype="dotted", color = "#bd182d", size=1)
+  geom_vline(xintercept = c(0.411, 0.553, 0.705), linetype="dotted", color = "#bd182d", size=1)
+```
 
+  \linebreak
 
-#### Basiert auf maximalem Score
+Bei den verteilungsbasierten Modellen findet sich in der geringste externe und interne Informationsverlust in den Modellen 2 und 5. Alle Modelle korrelieren sehr hoch mit dem kontinuierlichen Score. 
+<br>
+Es muss die inhaltliche Frage erwogen werden, ob das Ziel des Scores sein soll, die Befragten in in etwa gleichgroße Gruppen zu teilen. 
+
+#### ausgewählte max. Score basierte Modelle
+```{r}
+#| label: cutoff_m6
+#| echo: false
 ## Modell 6
+tabyl(v2$co_m6) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 6: max. Score basiert, Quintile')
+
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
   ggtitle("Cutoffs Modell 6: max. Score basiert, Quintile") +
@@ -688,12 +785,23 @@ ggplot(v2, aes(x=score_v1)) +
   theme_bw() +
   theme(plot.title = element_text(size=15)) +
   geom_vline(xintercept = c(0.2, 0.4, 0.6, 0.8), linetype="dotted", color = "#bd182d", size=1)
+```
 
+  \linebreak
+    \linebreak
+
+```{r}
+#| label: cutoff_m7
+#| echo: false
 ## Modell 7
-#tabyl(v2$co_int3)
+tabyl(v2$co_m7) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 7: max. Score basiert, Quartile')
+
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 6: max. Score basiert, Quartile") +
+  ggtitle("Cutoffs Modell 7: max. Score basiert, Quartile") +
   xlab("kontinuierlicher Nachhaltigkeits-Score") + 
   ylab("Häufigkeit") +
   theme_bw() +
@@ -701,6 +809,31 @@ ggplot(v2, aes(x=score_v1)) +
   geom_vline(xintercept = c(0.25, 0.5, 0.75), linetype="dotted", color = "#bd182d", size=1)
 ```
 
+  \linebreak
+    \linebreak
 
+```{r}
+#| label: cutoff_m9
+#| echo: false
+## Modell 9
+tabyl(v2$co_m9) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile')
+
+ggplot(v2, aes(x=score_v1)) +
+  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
+  ggtitle("Cutoffs Modell 9: max. Score basiert, Quintile/Quartile") +
+  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
+  ylab("Häufigkeit") +
+  theme_bw() +
+  theme(plot.title = element_text(size=15)) +
+  geom_vline(xintercept = c(0.4, 0.6, 0.75), linetype="dotted", color = "#bd182d", size=1)
+```
+
+
+Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich in der geringste externe und interne Informationsverlust je nach betrachtetem Indikator in den Modellen 6, 7, 9. Alle Modelle korrelieren hoch bis sehr hoch mit dem kontinuierlichen Score. 
+
+Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, **wir empfehlen daher die Wahl des Modells 9**. Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mittelmäßig bedeutsam . Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 
 
 

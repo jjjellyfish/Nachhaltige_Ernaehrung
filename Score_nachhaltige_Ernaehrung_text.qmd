@@ -242,7 +242,7 @@ out %>%
 ```
 
 
-In der Tabelle 2 findet sich das Ergebnis der EFA mit der finalen Itemauswahl zur Konstruktion der Nachhaltigkeits-Skala.Die EFA resultierte in einer 5-faktoriellen Struktur mit den Faktoren *Generelle Nachhaltigkeit*, *Spezifische Aspekte von Nachhaltigkeit*, *Fleischkonsum*, *Zubereitung von Speisen	Faktor* und *Hindernisse*. 
+In der Tabelle 2 findet sich das Ergebnis der EFA mit der finalen Itemauswahl von insgesamt 20 Items zur Konstruktion der Nachhaltigkeits-Skala.Die EFA resultierte in einer 5-faktoriellen Struktur mit den Faktoren *Generelle Nachhaltigkeit*, *Spezifische Aspekte von Nachhaltigkeit*, *Fleischkonsum*, *Zubereitung von Speisen	Faktor* und *Hindernisse*. 
 
 ```{r}
 #| label: item_einschluss_efa
@@ -260,7 +260,6 @@ efa_res %>%
                    'Faktor 5: Hindernisse'),
        caption = 'Ergebnise der exploratorischen Faktorenanalyse mit der finalen Itemauswahl für die Nachhaltigkeits-Skalea') %>%
   add_footnote('Faktorladungen <.20 werden aus nicht dargestellt', notation='none')
-
 ```
 
 
@@ -272,25 +271,38 @@ Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beant
 
 # 3. Score bilden & Cutoffs bestimmen
 
+Mit der In Abschnitt 2 getroffenen Itemauswahl wird im Folgenden ein Nachhaltigkeits-Score für die befragten Personen berechnet. Hierzu wird zunächst die Anzahl fehlender Werte auf der Nachhaltigkeits-Skala geprüft und eine Entscheidung darüber getroffen, wie viele der 20 Items valide beantwortet sein müssen, um einen entsprechenden Score sinnvoll berechnen zu können. Der Score wird gebildet indem die Summe aller beantworteter Items durch die Anzahl valider beantworteter Items geteilt wird. 
+
+Im nächsten Schritt werden mögliche Modelle für die Festlegung von Cutoff-Werte definiert (Abschnitt 3.2) und hinsichtlich der Kriterien des internen und externen Informationsverlusts sowie des Zusammenhangs mit dem Originalscore gegenübergestellt. 
+
+## 3.1 Fehlende Items
+
 ```{r}
 #| label: itemauswahl
 #| echo: false
 #| message: false
 items_v1 <- c('v_321', 'v_325', 'v_329', 'v_330', 'v_331', 'v_332', 'v_334', 'v_335', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_359', 'v_360', 'v_364', 'v_365', 'ern_erw', 'ern_kid')
-```
 
-## 3.1 Fehlende Items
-```{r}
-#| label: fehlende_items
-#| echo: false
 v1 <- sust %>% 
   select(lfdn, any_of(items_v1)) %>% 
   mutate(
     sum_valid = rowSums(!is.na(select(., 2:length(.)))),
-    score_v1=rowSums(select(., 2:length(.)), na.rm=TRUE)/ sum_valid)
+    score_v1=rowSums(select(., 2:length(.)), na.rm=TRUE)/ sum_valid,
+    sum_valid_cat = case_when(
+      is.na(sum_valid) | sum_valid <= 10 ~ '<= 10',
+      sum_valid > 10 & sum_valid <= 15 ~ '>10 & <= 15',
+      TRUE ~ as.character(sum_valid)))
+```
 
+
+Die Häufigkeit der Anzahl valider beantworteter Items ist in Tabelle 3 dargestellt. Der Großteil der Befragten beantwortet entweder alle Items oder weist maximal zwei fehlende Werte auf: n = `r length(v1$sum_valid[v1$sum_valid>17])` von N=`r length(v1$sum_valid)`, `r round(length(v1$sum_valid[v1$sum_valid>17]) / length(v1$sum_valid),4) * 100`%. Insgesamt nur `r round(length(v1$sum_valid[v1$sum_valid<=17]) / length(v1$sum_valid),4) * 100`% (n = `r length(v1$sum_valid[v1$sum_valid<=17])`) der Befragten beantworteten weniger als 18 Items. 
+
+
+```{r}
+#| label: fehlende_items
+#| echo: false
 # Anzahl valider Angaben
-tabyl(v1$sum_valid, show_na = TRUE) %>%  
+tabyl(v1$sum_valid_cat, show_na = TRUE) %>%  
   mutate(percent=percent*100) %>%
   kbl(booktabs = T,  digits = 4, centering=F, row.names=FALSE, 
       col.names=c('valide Items', 'n', '%'), 
@@ -298,34 +310,25 @@ tabyl(v1$sum_valid, show_na = TRUE) %>%
   kable_styling(full_width = T)
 ```
 
-  \linebreak
 
-# LESEZEICHEN:
-Bildung des Scores: Mittelwert aus allen Items 
+Tabelle 4 stellt die Nachhaltigkeits-Scores in Abhängigkeit von der Anzahl valider beantworteter Items dar, wobei der Score gebildet wird, indem die Summe aller beantworteter Items durch deren Anzahl geteilt wird. Der Mittelwert (MW) variiert mit unterschiedlicher Anzahl an beantworteten Items. 
 
-überarbeiten, bessere Gruppierung darstellen
-
-Mittelwerte nach Anzahl valide beantworteter Items: 
 ```{r}
 #| label: fehlende_items2
 #| echo: false
 # Mittelwerte in Abhängigkeit der Anzahl valider Werte
-v1 <- v1 %>% mutate(valid_group=case_when(
-  sum_valid < 10 ~ '<10',
-  between(sum_valid, 10, 17) ~ '10-17',
-  sum_valid>17 ~ '>17'
-))
-
-tmp <- psych::describeBy(v1$score_v1, group=v1$valid_group, mat=TRUE) %>%
+tmp <- psych::describeBy(v1$score_v1, group=v1$sum_valid_cat, mat=TRUE) %>%
   select(item:range, -item, -vars)
 
-tmp %>% kbl2()
+tmp %>% 
+  select(-trimmed, -median, -mad) %>%
+  kbl2(col.names=c('valide Items', 'n', 'MW', 'SD', 'Min', 'Max', 'Range')) %>%
+  add_footnote('n = 20 Personen haben 0 Items valide beantwortet, sodass für sie kein Score berechnet wird', notation='none')
 ```
 
+Da die in der Skala verwendeten Items zum Teil sehr unterschiedliche Aspekte der nachhaltigen Ernährung abbilden, wird für die Berechnung eines Nachhaltigkeits-Scores ein hoher Anteil an valide beantwortet Items vorausgesetzt. Der Schwellenwert wird von auf 90% (18 von 20 Items) festgelegt, weil so einerseits gut gewährleistet werden kann, dass möglichst viele Aspekte der Nachhaltigkeit im Score Berücksichtigung finden und andrerseits die Berechnung eines Scores noch immer für den Großteil der Stichprobe erfolgen kann. 
 
-Da die Items zum Teil sehr unterschiedliche Aspekte der nachhaltigen Ernährung abbilden, wird für die Berechnung eines Nachhaltigkeits-Scores ein hoher Anteil an valide beantwortet Items von 90% (18 von 20 Items) vorausgesetzt. 
-Für die Berechnung von Cutoffs werden alle Personen ausgeschlossen, die weniger als 18 Items beantwortet haben (n = `r length(v1$sum_valid[v1$sum_valid<=17])`, `r round(length(v1$sum_valid[v1$sum_valid<=17]) / length(v1$sum_valid),4) * 100`%). Die Brechnung eines Nachhaltigkeits-Scores sowie die folgenden Modelle zur Cut-Off-Wert-Berechnung berücksichtigen ausschließlich Personen mit mindestens 18 beantworteten Nachhaltigkets-Items (n = `r length(v1$sum_valid[v1$sum_valid>17])` von N=`r length(v1$sum_valid)`, `r round(length(v1$sum_valid[v1$sum_valid>17]) / length(v1$sum_valid),4) * 100`%).
-
+Für die Berechnung von Cutoffs werden alle Personen ausgeschlossen, die weniger als 18 Items beantwortet haben . Die Berechnung eines Nachhaltigkeits-Scores sowie die folgenden Modelle zur Cutoff-Wert-Berechnung berücksichtigen ausschließlich Personen mit mindestens 18 beantworteten Nachhaltigkeit-Items. 
 
 ```{r}
 #| label: fehlende_items3
@@ -333,10 +336,11 @@ Für die Berechnung von Cutoffs werden alle Personen ausgeschlossen, die weniger
 v1 <- v1 %>% filter(sum_valid>17) # weiter nur ohne diese Fälle (min. 18 valide Items)
 ```
 
-
 ## 3.2  Cutoff-Modelle festlegen
 
-Die Festlegung der Cut-Offs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen Nachhaltiger Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kommen sowohl verteilungs- als auch scorebasierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen erreichbaren Punktzahl.
+Die Festlegung der Cutoffs erfolgt zunächst explorativ. Zur Bestimmung distinkter Gruppen nachhaltiger Ernährung entlang des kontinuierlichen Nachhaltigkeits-Scores kommen sowohl verteilungs- als auch scorebasierte Ansätze zur Anwendung. Verteilungsbasierte Ansätze berücksichtigen die Verteilung des Nachhaltigkeits-Scores in der Stichprobe. Score-basierte Ansätze sind verteilungsunabhängig und basieren auf der im Nachhaltigkeits-Fragebogen maximal erreichbaren Punktzahl (Min 0, Max 1).
+
+Die Tabelle 5 bietet eine Übersicht über die Modelle, die Anzahl der darin gebildeten Gruppen und der verwendeten Cutoff-Werte. Die Modelle 1-5 sind verteilungsbasiert, die Modelle 6 bis 9 basieren auf dem maximal erreichbaren Score. 
 
 ```{r}
 #| label: cutoff_modelle
@@ -361,7 +365,6 @@ v1$co_m4 <- cut(v1$score_v1 , breaks = quantile(v1$score_v1, c(0, .125, .375, .6
 ## 5. Qauartile mit kleinen Randgruppen
 v1$co_int5 <- cut(v1$score_v1 , breaks = quantile(v1$score_v1, c(0, .125, .5, .875, 1)), include.lowest=TRUE)
 v1$co_m5 <- cut(v1$score_v1 , breaks = quantile(v1$score_v1, c(0, .125, .5, .875, 1)), labels=1:4, include.lowest=TRUE)
-
 
 ### Score-basiert
 ## 6. Quintile max. Score
@@ -393,12 +396,20 @@ v1 <- v1 %>% mutate(co_m9=case_when(
   score_v1 <= 1.0 ~ 4))
 ```
 
-Die Modelle 1 bis 5 basieren auf der Verteilung des Nachhaltigkeits-Scores in der Stichprobe, die Modelle 6 bis 9 basieren auf dem maximal erreichbaren Score (= 1).
-
 ```{r}
 #| label: uebersicht_cutoff_werte
 #| echo: false
 models <- c('1. Quintile', '2. Quartile', '3. Terzile', '4. Quintile mit kleinen Randgruppen', '5. Quartile mit kleinen Randgruppen', '6. Quintile max. Score', '7. Quartile max. Score', '8. Terzile max. Score', '9. Quintile/Quartile max. Score')
+
+description <- c('Cut-Offs in 20%-Schritten entlang der Stichprobenverteilung', 
+  '25%-Schritte entlang der Stichprobenverteilung',
+  '1/3-Schritte entlang der Stichprobenverteilung',
+  'Unter Maßgabe möglichst kleiner „Randgruppen“ (besonders hohe/niedrige Nachhaltigkeits-Scores) wurden Cutoffs in Anlehnung an Modell 1 bei 12,5%, 37,5%, 62,5% und 87,5% entlang der Stichprobenverteilung gesetzt',
+  'Unter der Maßgabe möglichst kleiner „Randgruppen“ wurden Cutoffs in Anlehnung an Modell 2  bei 12,5%, 50% und 87,5% entlang der Stichprobenverteilung gesetzt', 
+  'Cut-Offs werden bei 20%, 40%, 60% und 80% des maximalen Nachhaltigkeits-Scores gesetzt',
+ 'Cut-Offs werden bei 25%, 50% und 75% des maximalen Nachhaltigkeits-Scores gesetzt',
+  'Cut-Offs werden bei 33,3% und 66,7% des maximalen Nachhaltigkeits-Scores gesetzt',
+  'Cut-Offs werden bei einer Mischung aus Quintilen und Quartilen des maximalen Nachhaltigkeits-Scores bei 40%, 60% und 75%  gesetzt')
 
 n_groups <- c(5, 4, 3, 5, 4, 5, 4, 3, 4)
 cutoffs <- c('0.452, 0.523, .587, .663',
@@ -412,9 +423,9 @@ cutoffs <- c('0.452, 0.523, .587, .663',
              '0.400, 0.600, 0.750'
 )
 
-tmp <- tibble(models, n_groups, cutoffs)
+tmp <- tibble(models, description, n_groups, cutoffs)
 tmp %>% 
-  kbl2(col.names=c('Modell', 'Anzahl Gruppen', 'Cutoff-Werte'), 
+  kbl2(col.names=c('Modell', 'Beschreibung', 'Anzahl Gruppen', 'Cutoff-Werte'), 
       caption = 'Übersicht über die Cut-Off-Werte der betrachteten Modelle') %>%
   row_spec(c(5), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
 ```
@@ -422,15 +433,10 @@ tmp %>%
 
 ## 3.3 Modellbewertung
 
-TEXT
-
-**Kovariaten**: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes, Score der Ernährungskompetenz
-<br><br>
-
-Für die verschiedenen Cut-Off-Modelle wird zunächst der Anteil aufgeklärter Varianz in linearen Regressionen berechnet und mit der des kontinuierlichen Nachhaltigkeits-Scores verglichen. Zusätzlich werden ordinale Regressionen für die gebildeten Nachhaltigkeits-Gruppen als jeweils abhängige Variable und den o.g. Kovariaten gerechnet. Darüber hinaus wird die Korrelation (Spearman-Rho) zwischen den Nachhaltigkeits-Gruppen und dem Nachhaltigkeits-Score berechnet.
+Für die verschiedenen Cutoff-Modelle wird zunächst der Anteil aufgeklärter Varianz in linearen Regressionen berechnet und mit der des kontinuierlichen Nachhaltigkeits-Scores verglichen. Zusätzlich werden ordinale Regressionen für die gebildeten Nachhaltigkeits-Gruppen als jeweils abhängige Variable und den o.g. Kovariaten gerechnet. Als Kovariaten wurden in allen Regressionsmodellen folgende Merkmale verwendet: Geschlecht der erwachsenen Person, Alter und Geschlecht des Zielkindes, Anzahl Kinder unter 14 Jahren, soziökonomischer Status der Familie, Migrationsgeschichte, German Index of Socioeconomic Deprivation (GISD), Anzahl HBSC multiple psychosomatische Beschwerden, Gesundheitsstatus des Elternteils, Gesundheitsstatus des Kindes, Score der Ernährungskompetenz. Darüber hinaus wird die Korrelation (Spearman-Rho) zwischen den Nachhaltigkeits-Gruppen und dem Nachhaltigkeits-Score berechnet.
 <br>
-
-Die am besten geeigneten Cut-Off-Modelle werden anhand des minimalsten **external information loss** (d.h. höchste aufgeklärte Varianz [R² und Pseudo R² in den linearen und ordinalen Modellen]) so-wie des minimalsten **internal information loss** (maximale Korrelationen der Nachhaltigkeits-Gruppen mit dem Nachhaltigkeits-Score) bestimmt.
+Die am besten geeigneten Cutoff-Modelle werden anhand des minimalsten **external information loss** (d.h. höchste aufgeklärte Varianz [R² und Pseudo R² in den linearen und ordinalen Modellen]) sowie des minimalsten **internal information loss** (maximale Korrelationen der Nachhaltigkeits-Gruppen mit dem Nachhaltigkeits-Score) bestimmt. 
+Eine Übersicht der Prüfung aller Modelle findet sich in Tabelle 6. 
 
 ```{r}
 #| label: cutoff_modellbewertung
@@ -478,9 +484,6 @@ rho <- v2 %>%
 rho <- as.numeric(c(1, rho))
 ```
 
-
-**Übersicht über alle Cutoff-Modelle**
-
 ```{r}
 #| label: cutoff_modellbewertung_output
 #| echo: false
@@ -494,70 +497,45 @@ tmp %>%
   row_spec(c(1,6), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
 ```
 
-TEXT: Modellbewertung
-
 
 Bei den verteilungsbasierten Modellen findet sich in der geringste externe und interne Informationsverlust in den Modellen 2 und 5. Alle Modelle korrelieren sehr hoch mit dem kontinuierlichen Score.
-Es muss die inhaltliche Frage erwogen werden, ob das Ziel des Scores sein soll, die Befragten in in etwa gleichgroße Gruppen zu teilen.
+Verteilungsbasierte Cutoff-Werte zeigen besonders hohe Zusammenhänge mit dem kontinuierlichen Originalscore, da sie datenbasiert auf der Verteilung der Stichprobe gebildet werden. 
 
-# !!to do: in eine Tabelle packe
-```{r}
-#| label: cutoff_verteilungsbasiert
-#| echo: false
-## Modell 2
-tabyl(v2$co_m2) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 2: max. Score basiert, Quintile')
+Bei den so entstehen Cutoff-Werten stellt sich die Frage, inwiefern diese inhaltlich bedeutsam sind. So ist bspw.fraglich ob der Unterschied zwischen dem ersten (0.472) und dem zweiten Cutoff-Wert im Modell 2 eine Unterteilung der Befragten rechtfertigt. Grundsätzlich ist auch festzuhalten, dass verteilungsbasierte Cutoff-Werte nur auf Basis repräsentativer Erhebungen ermittelt werden können. Bei der Erhebung des AOK-Bundesverbandes handelt es sich zwar um eine repräsentative Erhebung, soweit aber Zweifel an der Repräsentativität einer Stichprobe bestehen, sollten Cutoffs nicht anhand ihrer Verteilung bestimmt werden. Bei verteilungsbasierten Cutoffs ergibt sich zudem die Problematik, dass durch den Bezug auf die Stichprobe künftige Vergleiche mit anderen Stichproben erschwert werden. Empfohlen wird vor diesem Hintergrund ein Modell zu wählen, dass bei der Bewertung in Cutoffs enthält, die unabhängig von der Verteilung der Stichprobe sind.
 
-## Modell 2
-tabyl(v2$co_m5) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 5: max. Score basiert, Quintile')
-```
+Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich in der geringste externe und interne Informationsverlust je nach betrachtetem Indikator in den Modellen 6, 7, 9. Alle Modelle korrelieren hoch bis sehr hoch mit dem kontinuierlichen Score. Die Verteilung der Stichprobe in die gemäß der Modelle gebildeten Kategorien ist in Tabelle 7 abgetragen. 
 
-
-Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich in der geringste externe und interne Informationsverlust je nach betrachtetem Indikator in den Modellen 6, 7, 9. Alle Modelle korrelieren hoch bis sehr hoch mit dem kontinuierlichen Score. 
-
-# !!to do: in eine Tabelle packen
 ```{r}
 #| label: cutoff_scorebasiert
 #| echo: false
-## Modell 6
-tabyl(v2$co_m6) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 6: max. Score basiert, Quintile')
 
-## Modell 6
-tabyl(v2$co_m6) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 6: max. Score basiert, Quintile')
+tmp1 <- tabyl(v2$co_m6) %>%  mutate(percent=percent*100)
+tmp2 <- tabyl(v2$co_m7) %>%  mutate(percent=percent*100) %>% add_row(`v2$co_m7`=NA, n = NA, percent=NA)
+tmp3 <- tabyl(v2$co_m9) %>%  mutate(percent=percent*100) %>% add_row(`v2$co_m9`=NA, n = NA, percent=NA)
 
-## Modell 9
-tabyl(v2$co_m9) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile')
+tmp <- bind_cols(tmp1, tmp2[2:length(tmp2)], tmp3[2:length(tmp3)])
+
+tmp %>% 
+  kbl2(col.names=c('Kategorie', rep(c('n', '%'),3)), 
+      caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile') %>% 
+  add_header_above(c('', 'Modell 6: Quintile max. Score' = 2, 
+                     'Modell 7: Quartile max. Score' = 2,
+                     'Modell 9: Quintile/Quartile max. Score ' = 2))
 ```
 
 
-  \linebreak
-    \linebreak
+Das Modell 9 weist innerhalb der scorebasierten Modelle die höchste Varianzaufklärung im linearen Regressionsmodell und eine zufriedenstellende Varianzaufklärung im oridnalen Regerssionsmodell auf. Der Zusammenhang mit dem kontinuierlichen Score ist im Modell 9 am höchsten. Betrachtet man die Einteilung der Stichprobe in Gruppen von Nachhaltigkeit, so zeigen sich bei den Modellen 6 und 7 teilweise sehr kleine Randkategorien. Die Bildung solcher Kategorien scheint inhaltlich nicht sinnvoll. Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, es wird daher zur Berechnung von Cutoff-Werten für den Nachhaltigkeits-Score eingesetzt.
 
-Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, **wir empfehlen daher die Wahl des Modells 9**.
 
-TEXT (mehr zu Gründen)
+##  3.4 Darstellung des ausgewählten Modells
 
-###  3.4 Darstellung des ausgewählten Modells
+Die mithilfe des am besten geeigneten Modells 9 bestimmten Cutoff-Werte sind in der Abbildung 1 dargestellt. Abbildung 2 stellt die Einteilung der Stichprobe in die jeweiligen Nachhaltigkeits-Gruppen ebenfalls grafisch dar. 
+
 ```{r}
 #| label: cutoff_m9
 #| echo: false
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 9: max. Score basiert, Quintile/Quartile") +
   xlab("kontinuierlicher Nachhaltigkeits-Score") + 
   ylab("Häufigkeit") +
   theme_bw() +
@@ -565,18 +543,22 @@ ggplot(v2, aes(x=score_v1)) +
   geom_vline(xintercept = c(0.4, 0.6, 0.75), linetype="dotted", color = "#bd182d", size=1)
 ```
 
-
-
-Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mittelmäßig bedeutsam . Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 
-
-# !!to do: mit Kategorien darstellen
 ```{r}
+#Kategrien benennen
+v2 <- v2 %>% mutate(co_m9_cat = case_when(
+  co_m9 == 1 ~ '1 = wenig Bedeutung',
+  co_m9 == 2 ~ '2 = mäßige Bedeutung',
+  co_m9 == 3 ~ '3 = hohe Bedeutung',
+  co_m9 == 4 ~ '4 = sehr hohe Bedeutung'
+))
 
-## Modell 9
-tabyl(v2$co_m9) %>% 
-  mutate(percent=percent*100) %>% 
-  kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile')
+ggplot(v2, aes(x="", y=co_m9_cat, fill=co_m9_cat)) +
+  geom_bar(stat="identity") + 
+  coord_polar(theta="y") +
+  scale_fill_manual(values=c("#00386a", "#BED600", "#eda63b", '#cbd3b2')) +
+  guides(fill=guide_legend("Bedeutung von Nachhaltigkeit")) + 
+  theme_void()
 ```
 
 
+Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mäßig bedeutsam. Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 

@@ -208,7 +208,7 @@ check <- dlookr::diagnose_numeric(sust) %>% select(variables, min, max, everythi
 
 # 1. Hintergrund & Ziel
 
-Der AOK-Bundesverband hat im Rahmen der AOK Familienstudie unter anderem erhoben, welche Bedeutung befragte Eltern der Nachhaltigkeit in ihrer Ernährung und der Ernährung ihrer Kinder beimessen. Hierzu wurde in Zusammenarbeit mit dem K.L.U.G Netzwerk ein Fragebogen entwickelt, der Aspekte der Einstellung zu nachhaltiger Ernährung, Wissen bzw. Fertigkeiten sowie Verhaltensweisen in Bezug auf nachhaltige Ernährung erfragt. Zusätzlich wurden Hindernisse für und mögliche Hilfen zur nachhaltigen Ernährung erhoben. 
+Der AOK-Bundesverband hat im Rahmen der AOK Familienstudie unter anderem erhoben, welche Bedeutung befragte Eltern der Nachhaltigkeit in ihrer Ernährung und der Ernährung ihrer Kinder beimessen. Hierzu wurde in Zusammenarbeit mit Deutschen Allianz für Klimawandel und Gesundheit (KLUG) ein Fragebogen entwickelt, der Aspekte der Einstellung zu nachhaltiger Ernährung, Wissen bzw. Fertigkeiten sowie Verhaltensweisen in Bezug auf nachhaltige Ernährung erfragt. Zusätzlich wurden Hindernisse für und mögliche Hilfen zur nachhaltigen Ernährung erhoben. 
 
 Der genutzte Fragebogen erlaubt eine Auswertung auf Ebene der einzelnen verwendeten Items. Um ferner einen Nachhaltigkeits-Score für die befragten Personen bilden sowie diese in Gruppen hinsichtlich der Bedeutung, die sie nachhaltiger Ernährung beimessen, einordnen zu können, wird aus den genutzen Items eine Nachhaltigkeits-Skala konstruiert. 
 
@@ -652,5 +652,13 @@ TEXT
 Nochmal irgendwelche Ergebnisse (ggf. Abbildung Kreisdiagramm oder so)
 ```{r}
 
+```
+
+
+```{r}
+iris <- v2 %>% 
+  select(lfdn, sum_valid, score_v1, co_m9)
+
+write.xlsx(iris, file='data/results_iris.xlsx')
 ```
 

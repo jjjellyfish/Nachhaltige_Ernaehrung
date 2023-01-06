@@ -222,121 +222,52 @@ Zur Konstruktion einer Nachhaltigkeits-Skala werden zunächst geeignete Items se
 
 ## 2.1 Auswahl von geeigneten Items
 
-In dem für die Familienstudie entwickelten Fragebogen zur Nachaltigen Ernährung finden sich Items, die zwar für ein Verständnis von Aspekten der nachhaltigen Ernährung von befragten Personen relevant sind, jedoch für die Konstruktion einer Nachhaltigkeits-Skala ungeeignet sind. Dies ist bspw. dann der Fall, wenn die Antworten auf Items keinen Rückschluss über das Ausmaß der Bedeutung von Nachhaltigkeit für die befragten Personen zulassen, d. h. eine Quantifizierung der Bedeutung mit dem Item nicht sinnvoll möglich ist.  Ferner werden bspw. auch solche Items für die Skalenkonstruktion als ungeeignet angesehen, die die Bedeutung von nachhaltiger *und* gesunder Ernährung gleichzeitig erheben und somit ebenfalls keinen eindeutigen Rückschluss auf die Bedutung der Nachhaltigkeit zulassen (= fehlende Eindimensionalität der Items). In der Tabelle XX werden alle im Fragebogen zur Nachhaligen Ernährung verwendeten und aus der Skalenkonstruktion ausgeschlossenen Items inklusive ihrer Ausschlussgründe dargestellt. 
+In dem für die Familienstudie entwickelten Fragebogen zur Nachhaltigen Ernährung finden sich Items, die zwar für ein Verständnis von Aspekten der nachhaltigen Ernährung von befragten Personen relevant sind, jedoch für die Konstruktion einer Nachhaltigkeits-Skala ungeeignet sind. Dies ist bspw. dann der Fall, wenn die Antworten auf Items keinen Rückschluss über das Ausmaß der Bedeutung von Nachhaltigkeit für die befragten Personen zulassen, d. h. eine Quantifizierung der Bedeutung mit dem Item nicht sinnvoll möglich ist.  Ferner werden bspw. auch solche Items für die Skalenkonstruktion als ungeeignet angesehen, die die Bedeutung von nachhaltiger *und* gesunder Ernährung gleichzeitig erheben und somit ebenfalls keinen eindeutigen Rückschluss auf die Bedeutung der Nachhaltigkeit zulassen (= fehlende Eindimensionalität der Items). 
 
-TABELLE
+Mit inhaltlich potentiell geeigneten Items wurden exploratorische Faktorenanalysen (EFAs) durchgeführt. Mittels der EFAs wurde überprüft, ob sich die Items inhaltlich sinnvollen zugrundeliegenden Faktoren der nachhaltigen Ernährung zuordnen lassen. Items, die auf keinem Faktor eindeutig zuzuordnen waren (bspw. weil sie auf mehrere Faktoren in ähnlicher Höhe luden), wurden aus der Skalenbildung ausgeschlossen.  
+
+In der Tabelle 1 werden alle im Fragebogen zur Nachhaltigen Ernährung verwendeten und aus der Skalenkonstruktion ausgeschlossenen Items inklusive ihrer Ausschlussgründe dargestellt.
+
+
+```{r}
+#| label: item_ausschluss
+#| echo: false
+# Datensatz mit Meta-Infos zu den Items
+out <- read.xlsx('./data/Items.xlsx', sheetIndex = 5)
+
+out %>%
+  select(`Frage Nr.` = frage_nr, Frage, Skalierung = skalierung, Ausschlussgrund) %>% 
+  kbl2(caption = 'Übersicht über ausgeschlossenen Items und deren Ausschlussgründe') %>%
+  column_spec(c(1,2), border_left = F, border_right = T)
+```
+
+
+In der Tabelle 2 findet sich das Ergebnis der EFA mit der finalen Itemauswahl zur Konstruktion der Nachhaltigkeits-Skala.Die EFA resultierte in einer 5-faktoriellen Struktur mit den Faktoren *Generelle Nachhaltigkeit*, *Spezifische Aspekte von Nachhaltigkeit*, *Fleischkonsum*, *Zubereitung von Speisen	Faktor* und *Hindernisse*. 
+
+```{r}
+#| label: item_einschluss_efa
+#| echo: false
+# Datensatz mit Meta-Infos zu den Items
+efa_res <- read.xlsx('./data/EFA_loadings_processed.xlsx', sheetIndex = 4)
+
+efa_res %>%
+  select(-item_nr, -eignung_score, -bereich_neu) %>% 
+  kbl2(col.names=c('Frage Nr.', 'Frage', 
+                   'Faktor 1: generelle Nachhaltigkeit', 
+                   'Faktor 2: spezifische Aspekte von Nachhaltigkeit', 
+                   'Faktor 3: Fleischkonsum', 
+                   'Faktor 4: Zubereitung von Speisen', 
+                   'Faktor 5: Hindernisse'),
+       caption = 'Ergebnise der exploratorischen Faktorenanalyse mit der finalen Itemauswahl für die Nachhaltigkeits-Skalea') %>%
+  add_footnote('Faktorladungen <.20 werden aus nicht dargestellt', notation='none')
+
+```
 
 
 ## 2.2 Transformation der Items
 
 Zur Vorbereitung der weiteren Verarbeitung werden alle Items so kodiert, dass ein hoher numerischer Wert mit maximal nachhaltiger Ernährung einhergeht. Ein niedriger Wert bedeutet umgekehrt eine wenig nachhaltige Ernährung. 
 Da die Items auf Antwortskalen mit unterschiedlich vielen Ausprägungen zu beantworten sind, müssen diese vor der Zusammenführung zu einer Nachhaltigkeits-Skala zudem auf eine einheitliche Antwortskala transformiert werden. Dabei wird die als minimale Ausprägung 0 und als maximale Ausprägung 1 gewählt. Somit weist auch der später gebildete Nachhaltigkeits-Score eine Range zwischen 0 und 1 auf.  
-
-
-## 2.3 Prüfung der Itemselektion mittels EFA
-
-Mittels einer exploratorischen Faktorenanalyse (EFA) wird überprüft, ob sich die Items inhaltlich sinnvollen zugrundeliegenden Faktoren der nachhaltigen Ernährung zuordnen lassen. Die EFA dient somit ein Stück weit einer Überprüfung der getroffenen Itemauswahl.  
-
-
-::: {.content-hidden unless-format="pdf"}
-
-```{r}
-#|label: cor_matrix
-tmp <- sust %>% 
-  select( -v_327, -v_328, -v_333, -v_352_357, -v_366) %>% 
-  na.omit()
-
-datamatrix <- cor(tmp[,c(-1)])
-
-corrplot::corrplot(datamatrix, method="color", order='hclust', 
-                   tl.col = "black", tl.cex = 0.7)
-
-corrplot::corrplot(datamatrix, method="number", order='hclust', 
-                   number.cex = 0.7,   tl.col = "black", tl.cex = 0.7)
-```
-
-**Exploratorische Faktorenanalyse** <br>
-Interpretationshilfe: <https://m-clark.github.io/posts/2020-04-10-psych-explained/>
-```{r}
-#|label: efa_nfactors
-fafitfree <- psych::fa(tmp, nfactors = ncol(tmp), rotate = "none")
-
-n_factors <- length(fafitfree$e.values)
-scree <- data.frame(
-  Factor_n =  as.factor(1:n_factors), 
-  Eigenvalue = fafitfree$e.values)
-
-ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
-  geom_point() + geom_line() +
-  xlab("Number of factors") +
-  ylab("Initial eigenvalue") +
-  labs( title = "Scree Plot", 
-        subtitle = "(Based on the unreduced correlation matrix)")
-
-parallel <- psych::fa.parallel(tmp)
-```
-
-```{r}
-#| label: efa
-efa <- psych::fa(r=tmp[,c(-1)], nfactors=5,
- max.iter=100,
- rotate='promax')
-
-print(efa)
-```
-
-```{r}
-#| label: loadings_df
-#| warning: false
-#| echo: false
-
-### loadings_df
-efa_df <- bind_cols(rownames(efa$loadings), efa$loadings, efa$communality, efa$uniquenesses)
-names(efa_df)[1] <- c('item')
-names(efa_df)[(length(efa_df)-1):length(efa_df)] <- c('h2', 'u2')
-
-# remove low loadings
-efa_df <- efa_df %>%
-  mutate(across(2:(ncol(.)-2), ~ifelse(abs(.) <= 0.2, NA, .)))
-
-write.xlsx(efa_df, file='data/EFA_loadings2.xlsx')
-```
-
-:::
-
-ERGEBNIS EFA-TABELLE
-
-```{r}
-#| label: add_item_descriptions
-#names(items)
-items <- items %>% 
-  add_row(item_nr='v_352_357', item='Wie viele Hindernisse für eine klima-/umweltfreundliche Ernährung werden genannt?', bereich='Hindernisse', bereich_neu='Einstellung / Bedeutung') %>% 
-  add_row(item_nr='ern_erw', item='Wie ernähren Sie sich?', bereich='Verhalten', bereich_neu='Verhalten') %>%
-  add_row(item_nr='ern_kid', item='Wie ernähren Sie Ihr Kind?', bereich='Verhalten', bereich_neu='Verhalten')
-```
-
-```{r}
-#| label: overview_items
-#| echo: false
-sust_items <- names(sust)[2:length(sust)]
-
-items %>%
-  filter(item_nr %in% sust_items) %>%
-  select(item_nr, bereich_neu, item) %>% 
-  arrange(match(bereich_neu, c('Einstellung / Bedeutung', 'Wissen / Fertigkeiten'))) %>%
-  kbl() %>%
-  kable_styling( position = "left") %>% 
-  column_spec(c(1,2), border_left = F, border_right = T) %>% 
-  row_spec(c(0,5,13), extra_css = "border-bottom: 1px solid", hline_after=TRUE) 
-```
-
-```{r}
-#| label: alpha2
-alpha <- psych::alpha(select(tmp, contains('v_')), check.keys = F)
-alpha$total$std.alpha
-```
-
-TEXT: ok
 
 
 # 3. Score bilden & Cutoffs bestimmen
@@ -483,7 +414,7 @@ cutoffs <- c('0.452, 0.523, .587, .663',
 
 tmp <- tibble(models, n_groups, cutoffs)
 tmp %>% 
-  kbl2(col.names=c('Modell', 'Anazahl Gruppen', 'Cutoff-Werte'), 
+  kbl2(col.names=c('Modell', 'Anzahl Gruppen', 'Cutoff-Werte'), 
       caption = 'Übersicht über die Cut-Off-Werte der betrachteten Modelle') %>%
   row_spec(c(5), extra_css = "border-bottom: 1px solid", hline_after=TRUE)
 ```
@@ -547,7 +478,8 @@ rho <- v2 %>%
 rho <- as.numeric(c(1, rho))
 ```
 
-### 3.3.1 Übersicht über alle Cutoff-Modelle
+
+**Übersicht über alle Cutoff-Modelle**
 
 ```{r}
 #| label: cutoff_modellbewertung_output
@@ -568,15 +500,29 @@ TEXT: Modellbewertung
 Bei den verteilungsbasierten Modellen findet sich in der geringste externe und interne Informationsverlust in den Modellen 2 und 5. Alle Modelle korrelieren sehr hoch mit dem kontinuierlichen Score.
 Es muss die inhaltliche Frage erwogen werden, ob das Ziel des Scores sein soll, die Befragten in in etwa gleichgroße Gruppen zu teilen.
 
-  \linebreak
-    \linebreak
-
-
-
-###  3.3.2 Darstellung ausgewählter Modelle
-
+# !!to do: in eine Tabelle packe
 ```{r}
-#| label: cutoff_m6
+#| label: cutoff_verteilungsbasiert
+#| echo: false
+## Modell 2
+tabyl(v2$co_m2) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 2: max. Score basiert, Quintile')
+
+## Modell 2
+tabyl(v2$co_m5) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 5: max. Score basiert, Quintile')
+```
+
+
+Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich in der geringste externe und interne Informationsverlust je nach betrachtetem Indikator in den Modellen 6, 7, 9. Alle Modelle korrelieren hoch bis sehr hoch mit dem kontinuierlichen Score. 
+
+# !!to do: in eine Tabelle packen
+```{r}
+#| label: cutoff_scorebasiert
 #| echo: false
 ## Modell 6
 tabyl(v2$co_m6) %>% 
@@ -584,51 +530,31 @@ tabyl(v2$co_m6) %>%
   kbl2(col.names=c('Kategorie', 'n', '%'), 
       caption = 'Cutoffs Modell 6: max. Score basiert, Quintile')
 
-ggplot(v2, aes(x=score_v1)) +
-  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 6: max. Score basiert, Quintile") +
-  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
-  ylab("Häufigkeit") +
-  theme_bw() +
-  theme(plot.title = element_text(size=15)) +
-  geom_vline(xintercept = c(0.2, 0.4, 0.6, 0.8), linetype="dotted", color = "#bd182d", size=1)
-```
-
-  \linebreak
-    \linebreak
-
-```{r}
-#| label: cutoff_m7
-#| echo: false
-## Modell 7
-tabyl(v2$co_m7) %>% 
+## Modell 6
+tabyl(v2$co_m6) %>% 
   mutate(percent=percent*100) %>% 
   kbl2(col.names=c('Kategorie', 'n', '%'), 
-      caption = 'Cutoffs Modell 7: max. Score basiert, Quartile')
+      caption = 'Cutoffs Modell 6: max. Score basiert, Quintile')
 
-ggplot(v2, aes(x=score_v1)) +
-  geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
-  ggtitle("Cutoffs Modell 7: max. Score basiert, Quartile") +
-  xlab("kontinuierlicher Nachhaltigkeits-Score") + 
-  ylab("Häufigkeit") +
-  theme_bw() +
-  theme(plot.title = element_text(size=15)) +
-  geom_vline(xintercept = c(0.25, 0.5, 0.75), linetype="dotted", color = "#bd182d", size=1)
-```
-
-
-  \linebreak
-    \linebreak
-
-```{r}
-#| label: cutoff_m9
-#| echo: false
 ## Modell 9
 tabyl(v2$co_m9) %>% 
   mutate(percent=percent*100) %>% 
   kbl2(col.names=c('Kategorie', 'n', '%'), 
       caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile')
+```
 
+
+  \linebreak
+    \linebreak
+
+Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, **wir empfehlen daher die Wahl des Modells 9**.
+
+TEXT (mehr zu Gründen)
+
+###  3.4 Darstellung des ausgewählten Modells
+```{r}
+#| label: cutoff_m9
+#| echo: false
 ggplot(v2, aes(x=score_v1)) +
   geom_histogram(binwidth=0.005, fill="#BED600", color="#e9ecef", alpha=0.9) +
   ggtitle("Cutoffs Modell 9: max. Score basiert, Quintile/Quartile") +
@@ -640,25 +566,17 @@ ggplot(v2, aes(x=score_v1)) +
 ```
 
 
-Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich in der geringste externe und interne Informationsverlust je nach betrachtetem Indikator in den Modellen 6, 7, 9. Alle Modelle korrelieren hoch bis sehr hoch mit dem kontinuierlichen Score. 
 
-Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, **wir empfehlen daher die Wahl des Modells 9**. Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mittelmäßig bedeutsam . Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 
+Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mittelmäßig bedeutsam . Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 
 
-
-# 4. Fazit
-
-TEXT
-
-Nochmal irgendwelche Ergebnisse (ggf. Abbildung Kreisdiagramm oder so)
+# !!to do: mit Kategorien darstellen
 ```{r}
 
+## Modell 9
+tabyl(v2$co_m9) %>% 
+  mutate(percent=percent*100) %>% 
+  kbl2(col.names=c('Kategorie', 'n', '%'), 
+      caption = 'Cutoffs Modell 9: max. Score basiert, Quintile/Quartile')
 ```
 
-
-```{r}
-iris <- v2 %>% 
-  select(lfdn, sum_valid, score_v1, co_m9)
-
-write.xlsx(iris, file='data/results_iris.xlsx')
-```
 

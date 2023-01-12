@@ -402,7 +402,7 @@ alpha$total$std.alpha
 ```{r}
 #|label: cor_matrix2
 tmp <- sust %>% 
-  select( -v_327, -v_328, -v_333, -v_352_357, -v_366) %>% 
+  select( -v_327, -v_328, -v_333, -v_352_357, -v_365, -v_366) %>% #
   na.omit()
 
 datamatrix <- cor(tmp[,c(-1)])
@@ -479,7 +479,7 @@ alpha$total$std.alpha
 #| label: score
 #| echo: false
 #| message: false
-items_v1 <- c('v_321', 'v_325', 'v_329', 'v_330', 'v_331', 'v_332', 'v_334', 'v_335', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_359', 'v_360', 'v_364', 'v_365', 'ern_erw', 'ern_kid')
+items_v1 <- c('v_321', 'v_325', 'v_329', 'v_330', 'v_331', 'v_332', 'v_334', 'v_335', 'v_346', 'v_347', 'v_348', 'v_349', 'v_350', 'v_351', 'v_359', 'v_360', 'v_364', 'ern_erw', 'ern_kid') #'v_365',
 
 # nur für vollständig ausgefüllte Items
 v1 <- sust %>% 

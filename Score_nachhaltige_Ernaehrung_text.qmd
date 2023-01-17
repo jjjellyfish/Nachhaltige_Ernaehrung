@@ -574,3 +574,14 @@ dev.off()
 
 
 Es ergibt sich eine Verteilung nach der etwa 12% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mäßig bedeutsam. Etwa ein Viertel messen der Nachhaltigkeit eine hohe und etwa 6% eine sehr hohe Bedeutung zu. 
+
+
+```{r}
+#| label: save_iris
+#| echo: false
+
+results <- v2 %>% 
+  select(lfdn, sum_valid, score_v1, co_m9)
+
+write.xlsx(results, file='results_iris.xlsx')
+```

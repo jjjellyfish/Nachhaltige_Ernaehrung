@@ -836,4 +836,3 @@ Bei den Modellen, die auf dem maximal erreichbaren Score basieren, findet sich i
 
 Alle Indikatoren zusammengenommen, weist das Modell 9 die besten Eigenschaften auf, **wir empfehlen daher die Wahl des Modells 9**. Es ergibt sich eine Verteilung nach der etwa 10% der Stichprobe der nachhaltigen Ernährung nur wenig Bedeutung beimessen. Für etwas mehr als die Hälfte ist Nachhaltigkeit in der Ernährung mittelmäßig bedeutsam . Etwa 30% messen der Nachhaltigkeit eine hohe und 7% eine sehr hohe Bedeutung zu. 
 
-
